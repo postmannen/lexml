@@ -51,6 +51,9 @@ func (l *lexer) readLine() stateFunc {
 
 //start will start the reading of lines from file, and then kickstart it all
 // by running the returned function inside the for loop.
+// Since all methods return a new method to be executed on the next run, we
+// will check if the current ran method returned nil instead of a new method
+// to exit.
 func (l *lexer) start() {
 	fn := l.readLine()
 	for {
