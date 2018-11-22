@@ -87,7 +87,7 @@ func (l *lexer) print() stateFunc {
 //
 func (l *lexer) checkItemInLine() stateFunc {
 	if len(l.currentLine) == 0 {
-		log.Println("NOTE: blank line, reading the next line")
+		log.Println("NOTE: blank line, getting out and reading the next line")
 		return l.readLine()
 	}
 
@@ -96,12 +96,15 @@ func (l *lexer) checkItemInLine() stateFunc {
 	//
 	if strings.HasPrefix(l.currentLine, "<") && strings.HasSuffix(l.currentLine, ">") {
 		fmt.Println(" ***HAS BOTH START AND END BRACKET, Normal tag line ***")
+		//Do something...........................
 	}
 	if strings.HasPrefix(l.currentLine, "<") && !strings.HasSuffix(l.currentLine, ">") {
 		fmt.Println(" ***HAS START, BUT NO END BRACKET, TAG CONTINUES ON NEXT LINE ***")
+		//Do something...........................
 	}
 	if !strings.HasPrefix(l.currentLine, "<") && !strings.HasSuffix(l.currentLine, ">") {
 		fmt.Println(" ***HAS NO START, NO END BRACKET, PROBABLY COMMENT, ALSO TAG CONTINUES ON NEXT LINE ***")
+		//Do something...........................
 	}
 
 	//---NB: Here the line should be complete, and concatenated by others if needed.
@@ -113,10 +116,13 @@ func (l *lexer) checkItemInLine() stateFunc {
 		switch l.workingLine[l.workingPosition] {
 		case '<':
 			fmt.Println("------FOUND START BRACKET CHR--------")
+			//Do something...........................
 		case '>':
 			fmt.Println("------FOUND END BRACKET CHR----------")
+			//Do something...........................
 		case '=':
 			fmt.Println("------FOUND EQUAL SIGN CHR----------")
+			//Do something...........................
 		}
 
 		l.workingPosition++
