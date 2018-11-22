@@ -52,7 +52,7 @@ func (l *lexer) readLine() stateFunc {
 		}
 	}
 	l.nextLine = strings.TrimSpace(string(line))
-	return l.checkItemInLine
+	return l.checkLineType
 }
 
 //start will start the reading of lines from file, and then kickstart it all
@@ -80,52 +80,59 @@ func (l *lexer) print() stateFunc {
 
 //checkItemInLine will work itselves one character position at a time the string line,
 // and do some action based on the type of character found.
-// If string is blank, or end of string is reached we exit, and read a new line.
-//
-// While working on the same line any state functions used  should return back here
-// until the end of the line is reached.
 //
 func (l *lexer) checkItemInLine() stateFunc {
-	if len(l.currentLine) == 0 {
-		log.Println("NOTE: blank line, getting out and reading the next line")
-		return l.readLine()
-	}
-
-	//Check what kind of line it is. If it is a start tag with close on same line,
-	// end tag, or a comment line
-	//
-	if strings.HasPrefix(l.currentLine, "<") && strings.HasSuffix(l.currentLine, ">") {
-		fmt.Println(" ***HAS BOTH START AND END BRACKET, Normal tag line ***")
-		//Do something...........................
-	}
-	if strings.HasPrefix(l.currentLine, "<") && !strings.HasSuffix(l.currentLine, ">") {
-		fmt.Println(" ***HAS START, BUT NO END BRACKET, TAG CONTINUES ON NEXT LINE ***")
-		//Do something...........................
-	}
-	if !strings.HasPrefix(l.currentLine, "<") && !strings.HasSuffix(l.currentLine, ">") {
-		fmt.Println(" ***HAS NO START, NO END BRACKET, PROBABLY COMMENT, ALSO TAG CONTINUES ON NEXT LINE ***")
-		//Do something...........................
-	}
-
-	//---NB: Here the line should be complete, and concatenated by others if needed.
-
-	l.workingLine = l.currentLine
 	//Check all the individual characters of the string
 	//
 	for l.workingPosition < len(l.workingLine) {
 		switch l.workingLine[l.workingPosition] {
 		case '<':
 			fmt.Println("------FOUND START BRACKET CHR--------")
-			//Do something...........................
+			//TODO: Do something...........................
 		case '>':
 			fmt.Println("------FOUND END BRACKET CHR----------")
-			//Do something...........................
+			//TODO: Do something...........................
 		case '=':
 			fmt.Println("------FOUND EQUAL SIGN CHR----------")
-			//Do something...........................
+			//TODO: Do something...........................
 		}
 
 		l.workingPosition++
+	}
+
+	return l.print
+}
+
+//checkLineType checks what kind of line we are dealing with. If the line belongs
+// together with the line following after, the lines will be combined into a single
+// string
+// If string is blank, or end of string is reached we exit, and read a new line.
+func (l *lexer) checkLineType() stateFunc {
+	// If the line is blank, return and read a new line
+	if len(l.currentLine) == 0 {
+		log.Println("NOTE: blank line, getting out and reading the next line")
+		return l.readLine
+	}
+
+	//TODO: Put this in the correct place later
+	l.workingLine = l.currentLine
+
+	//Check what kind of line it is. If it is a start tag with close on same line,
+	// end tag, or a comment line
+	if strings.HasPrefix(l.currentLine, "<") && strings.HasSuffix(l.currentLine, ">") {
+		fmt.Println(" ***HAS BOTH START AND END BRACKET, Normal tag line ***")
+		//TODO: Do something here...............................
+		return l.checkItemInLine
+	}
+	if strings.HasPrefix(l.currentLine, "<") && !strings.HasSuffix(l.currentLine, ">") {
+		fmt.Println(" ***HAS START, BUT NO END BRACKET, TAG CONTINUES ON NEXT LINE ***")
+		//TODO: Do something here...............................
+		return l.checkItemInLine
+	}
+	if !strings.HasPrefix(l.currentLine, "<") && !strings.HasSuffix(l.currentLine, ">") {
+		fmt.Println(" ***HAS NO START, NO END BRACKET, PROBABLY COMMENT, ALSO TAG CONTINUES ON NEXT LINE ***")
+		//TODO: Do something here...............................
+		return l.checkItemInLine
 	}
 
 	return l.print
