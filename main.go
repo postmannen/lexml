@@ -1,3 +1,11 @@
+/* The idea here is to create a lexer for the parrot.xml file which
+holds the definition of the protocol used to control the Parrot Bebop 2 drone.
+The lexer will be build't by having one main run function who executes a function,
+and get a new function in return, that again will be executed next.
+The program will be build't up by many smaller functions who server one single purpose
+in the production line, and they know what function to return next based on they're own
+simple logic.
+*/
 package main
 
 import (
