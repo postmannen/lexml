@@ -40,13 +40,13 @@ func newLexer(fh *os.File) *lexer {
 //stateFunc is the defenition of a state function.
 type stateFunc func() stateFunc
 
-//readLine will allways read the next line, and move the previous next line
+//lexReadLine will allways read the next line, and move the previous next line
 // into current line on next run. All spaces and carriage returns are removed.
 // Since we are working on the line that was read on the prevoius run, we will
 // set l.EOF to true as our exit parameter if error==io.EOF, so the whole
 // function is called one more time if error=io.EOF so we also get the last line
 // of the file moved into l.currentLine.
-func (l *lexer) readLine() stateFunc {
+func (l *lexer) lexReadLine() stateFunc {
 	l.workingPosition = 0
 	l.currentLineNR++
 	l.currentLine = l.nextLine
@@ -60,16 +60,16 @@ func (l *lexer) readLine() stateFunc {
 		}
 	}
 	l.nextLine = strings.TrimSpace(string(line))
-	return l.checkLineType
+	return l.lexCheckLineType
 }
 
-//start will start the reading of lines from file, and then kickstart it all
+//lexStart will start the reading of lines from file, and then kickstart it all
 // by running the returned function inside the for loop.
 // Since all methods return a new method to be executed on the next run, we
 // will check if the current ran method returned nil instead of a new method
 // to exit.
-func (l *lexer) start() {
-	fn := l.readLine()
+func (l *lexer) lexStart() {
+	fn := l.lexReadLine()
 	for {
 		fn = fn()
 		if fn == nil {
@@ -79,17 +79,17 @@ func (l *lexer) start() {
 	}
 }
 
-//print will print the current working line.
-func (l *lexer) print() stateFunc {
+//lexPrint will print the current working line.
+func (l *lexer) lexPrint() stateFunc {
 	fmt.Println(l.currentLineNR, l.currentLine)
 	fmt.Println("-------------------------------------------------------------------------")
-	return l.readLine()
+	return l.lexReadLine()
 }
 
-//checkItemInLine will work itselves one character position at a time the string line,
+//lexChr will work itselves one character position at a time the string line,
 // and do some action based on the type of character found.
 //
-func (l *lexer) checkItemInLine() stateFunc {
+func (l *lexer) lexChr() stateFunc {
 	//Check all the individual characters of the string
 	//
 	for l.workingPosition < len(l.workingLine) {
@@ -108,18 +108,18 @@ func (l *lexer) checkItemInLine() stateFunc {
 		l.workingPosition++
 	}
 
-	return l.print
+	return l.lexPrint
 }
 
-//checkLineType checks what kind of line we are dealing with. If the line belongs
+//lexCheckLineType checks what kind of line we are dealing with. If the line belongs
 // together with the line following after, the lines will be combined into a single
 // string
 // If string is blank, or end of string is reached we exit, and read a new line.
-func (l *lexer) checkLineType() stateFunc {
+func (l *lexer) lexCheckLineType() stateFunc {
 	// If the line is blank, return and read a new line
 	if len(l.currentLine) == 0 {
 		log.Println("NOTE: blank line, getting out and reading the next line")
-		return l.readLine
+		return l.lexReadLine
 	}
 
 	//TODO: Put this in the correct place later
@@ -129,21 +129,24 @@ func (l *lexer) checkLineType() stateFunc {
 	// end tag, or a comment line
 	if strings.HasPrefix(l.currentLine, "<") && strings.HasSuffix(l.currentLine, ">") {
 		fmt.Println(" ***HAS BOTH START AND END BRACKET, Normal tag line ***")
-		//TODO: Do something here...............................
-		return l.checkItemInLine
+		return l.lexChr
 	}
 	if strings.HasPrefix(l.currentLine, "<") && !strings.HasSuffix(l.currentLine, ">") {
 		fmt.Println(" ***HAS START, BUT NO END BRACKET, TAG CONTINUES ON NEXT LINE ***")
 		//TODO: Do something here...............................
-		return l.checkItemInLine
+		return l.lexChr
+	}
+	if !strings.HasPrefix(l.currentLine, "<") && !strings.HasSuffix(l.currentLine, ">") && strings.HasPrefix(l.nextLine, "<") {
+		fmt.Println(" ***HAS NO START, NO END BRACKET, PROBABLY COMMENT, JUST A SINGLE LINE, NO CONCATENATION NEEDED ***")
+		//TODO: Do something here...............................
+		return l.lexChr
 	}
 	if !strings.HasPrefix(l.currentLine, "<") && !strings.HasSuffix(l.currentLine, ">") {
 		fmt.Println(" ***HAS NO START, NO END BRACKET, PROBABLY COMMENT, ALSO TAG CONTINUES ON NEXT LINE ***")
 		//TODO: Do something here...............................
-		return l.checkItemInLine
+		return l.lexChr
 	}
-
-	return l.print
+	return l.lexPrint
 }
 
 func main() {
@@ -153,6 +156,6 @@ func main() {
 	}
 
 	lex := newLexer(fh)
-	lex.start()
+	lex.lexStart()
 
 }
