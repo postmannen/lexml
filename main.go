@@ -137,12 +137,12 @@ func (l *lexer) lexCheckLineType() stateFunc {
 		return l.lexChr
 	}
 	if !strings.HasPrefix(l.currentLine, "<") && !strings.HasSuffix(l.currentLine, ">") && strings.HasPrefix(l.nextLine, "<") {
-		fmt.Println(" ***HAS NO START, NO END BRACKET, PROBABLY COMMENT, JUST A SINGLE LINE, NO CONCATENATION NEEDED ***")
+		fmt.Println(" ***HAS NO START, NO END BRACKET, PROBABLY DESCRIPTION, JUST A SINGLE LINE, NO CONCATENATION NEEDED ***")
 		//TODO: Do something here...............................
 		return l.lexChr
 	}
 	if !strings.HasPrefix(l.currentLine, "<") && !strings.HasSuffix(l.currentLine, ">") {
-		fmt.Println(" ***HAS NO START, NO END BRACKET, PROBABLY COMMENT, ALSO TAG CONTINUES ON NEXT LINE ***")
+		fmt.Println(" ***HAS NO START, NO END BRACKET, PROBABLY DESCRIPTION, ALSO TAG CONTINUES ON NEXT LINE ***")
 		//TODO: Do something here...............................
 		return l.lexChr
 	}
