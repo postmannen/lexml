@@ -27,6 +27,7 @@ type lexer struct {
 	EOF             bool          //used for proper ending of readLine method.
 	workingLine     string        //the line being worked on. Can be a collection of several lines.
 	workingPosition int           //the chr position we're currently working at in line
+	startFound      bool          //used to tell if a start was found so we can separate descriptions (which have to tags) from the rest while making the lexer.workingLine.
 }
 
 //newLexer will return a *lexer type, it takes a pointer to a file as input.
@@ -81,8 +82,10 @@ func (l *lexer) lexStart() {
 
 //lexPrint will print the current working line.
 func (l *lexer) lexPrint() stateFunc {
-	fmt.Println(l.currentLineNR, l.currentLine)
+	fmt.Println(l.currentLineNR, l.workingLine)
 	fmt.Println("-------------------------------------------------------------------------")
+	//We reset the working line here
+	l.workingLine = ""
 	return l.lexReadLine()
 }
 
@@ -95,13 +98,13 @@ func (l *lexer) lexChr() stateFunc {
 	for l.workingPosition < len(l.workingLine) {
 		switch l.workingLine[l.workingPosition] {
 		case '<':
-			fmt.Println("------FOUND START BRACKET CHR--------")
+			//fmt.Println("------FOUND START BRACKET CHR--------")
 			//TODO: Do something...........................
 		case '>':
-			fmt.Println("------FOUND END BRACKET CHR----------")
+			//fmt.Println("------FOUND END BRACKET CHR----------")
 			//TODO: Do something...........................
 		case '=':
-			fmt.Println("------FOUND EQUAL SIGN CHR----------")
+			//fmt.Println("------FOUND EQUAL SIGN CHR----------")
 			//TODO: Do something...........................
 		}
 
@@ -118,34 +121,65 @@ func (l *lexer) lexChr() stateFunc {
 func (l *lexer) lexCheckLineType() stateFunc {
 	// If the line is blank, return and read a new line
 	if len(l.currentLine) == 0 {
-		log.Println("NOTE: blank line, getting out and reading the next line")
+		log.Println("NOTE ", l.currentLineNR, ": blank line, getting out and reading the next line")
 		return l.lexReadLine
 	}
 
-	//TODO: Put this in the correct place later
-	l.workingLine = l.currentLine
+	start := strings.HasPrefix(l.currentLine, "<")
+	end := strings.HasSuffix(l.currentLine, ">")
+	nextLineStart := strings.HasPrefix(l.nextLine, "<")
 
-	//Check what kind of line it is. If it is a start tag with close on same line,
-	// end tag, or a comment line
-	if strings.HasPrefix(l.currentLine, "<") && strings.HasSuffix(l.currentLine, ">") {
-		fmt.Println(" ***HAS BOTH START AND END BRACKET, Normal tag line ***")
+	//set the workingLine = currentLine and go directly to lexing.
+	if start && end {
+		fmt.Println(" ***TAG ", l.currentLineNR, ": HAS START AND END BRACKET, Normal tag line ***")
+		l.startFound = false
+		l.workingLine = l.currentLine
 		return l.lexChr
 	}
-	if strings.HasPrefix(l.currentLine, "<") && !strings.HasSuffix(l.currentLine, ">") {
-		fmt.Println(" ***HAS START, BUT NO END BRACKET, TAG CONTINUES ON NEXT LINE ***")
-		//TODO: Do something here...............................
-		return l.lexChr
+
+	// This indicates this is the first line with a start tag, and the rest are on the following lines.
+	// Set initial workingLine=currentLine, and read another line. We set l.startfound to true, to signal
+	// that we want to add more lines later to the current working line.
+	if start && !end {
+		fmt.Println(" ***TAG ", l.currentLineNR, " : start && !end, CONTINUES ON NEXT LINE ***")
+		l.startFound = true
+		l.workingLine = l.workingLine + " " + l.currentLine
+		return l.lexReadLine
 	}
-	if !strings.HasPrefix(l.currentLine, "<") && !strings.HasSuffix(l.currentLine, ">") && strings.HasPrefix(l.nextLine, "<") {
-		fmt.Println(" ***HAS NO START, NO END BRACKET, PROBABLY DESCRIPTION, JUST A SINGLE LINE, NO CONCATENATION NEEDED ***")
-		//TODO: Do something here...............................
-		return l.lexChr
+
+	// This indicates we have found a start earlier, and that we need to add this currentLine to the
+	// existing content of the workingLine, and read another line
+	if !start && !end && l.startFound {
+		fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.startFound, CONTINUES ON NEXT LINE ***")
+		l.workingLine = l.workingLine + " " + l.currentLine
+		return l.lexReadLine
 	}
-	if !strings.HasPrefix(l.currentLine, "<") && !strings.HasSuffix(l.currentLine, ">") {
-		fmt.Println(" ***HAS NO START, NO END BRACKET, PROBABLY DESCRIPTION, ALSO TAG CONTINUES ON NEXT LINE ***")
-		//TODO: Do something here...............................
-		return l.lexChr
+
+	//This should indicate that we found the last line of several that have to be combined
+	if !start && end && l.startFound {
+		fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.startFound, CONTINUES ON NEXT LINE ***")
+		l.workingLine = l.workingLine + " " + l.currentLine
+		return l.lexPrint
 	}
+
+	//Description line
+	if !start && !end && !l.startFound && !nextLineStart {
+		fmt.Println(" ***DESC", l.currentLineNR, ": !start && !end && !l.startFound && !nextLineStart, CONTINUES ON NEXT LINE ***")
+		l.workingLine = l.workingLine + " " + l.currentLine
+		return l.lexReadLine
+	}
+
+	//Description line
+	if !start && !end && !l.startFound && nextLineStart {
+		fmt.Println(" ***DESC", l.currentLineNR, " : !start && !end && !l.startFound && nextLineStart ***")
+		l.workingLine = l.workingLine + " " + l.currentLine
+		return l.lexPrint
+	}
+
+	l.startFound = false
+	// The print and return below should optimally never happen.
+	// Check it's output to figure what is not detected in the if's above.
+	fmt.Println("DEBUG: *uncaught line!! :", l.currentLineNR, l.workingLine)
 	return l.lexPrint
 }
 
