@@ -129,7 +129,7 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	end := strings.HasSuffix(l.currentLine, ">")
 	nextLineStart := strings.HasPrefix(l.nextLine, "<")
 
-	//set the workingLine = currentLine and go directly to lexing.
+	//TAG: set the workingLine = currentLine and go directly to lexing.
 	if start && end {
 		fmt.Println(" ***TAG ", l.currentLineNR, ": HAS START AND END BRACKET, Normal tag line ***")
 		l.startFound = false
@@ -137,7 +137,7 @@ func (l *lexer) lexCheckLineType() stateFunc {
 		return l.lexChr
 	}
 
-	// This indicates this is the first line with a start tag, and the rest are on the following lines.
+	// TAG: This indicates this is the first line with a start tag, and the rest are on the following lines.
 	// Set initial workingLine=currentLine, and read another line. We set l.startfound to true, to signal
 	// that we want to add more lines later to the current working line.
 	if start && !end {
@@ -147,7 +147,7 @@ func (l *lexer) lexCheckLineType() stateFunc {
 		return l.lexReadLine
 	}
 
-	// This indicates we have found a start earlier, and that we need to add this currentLine to the
+	// TAG: This indicates we have found a start earlier, and that we need to add this currentLine to the
 	// existing content of the workingLine, and read another line
 	if !start && !end && l.startFound {
 		fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.startFound, CONTINUES ON NEXT LINE ***")
@@ -155,21 +155,23 @@ func (l *lexer) lexCheckLineType() stateFunc {
 		return l.lexReadLine
 	}
 
-	//This should indicate that we found the last line of several that have to be combined
+	//TAG: This should indicate that we found the last line of several that have to be combined
 	if !start && end && l.startFound {
 		fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.startFound, CONTINUES ON NEXT LINE ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
 		return l.lexPrint
 	}
 
-	//Description line
+	//Description line. These are lines that have no start or end tag that belong to them.
+	// Starts, but continues on the next line.
 	if !start && !end && !l.startFound && !nextLineStart {
 		fmt.Println(" ***DESC", l.currentLineNR, ": !start && !end && !l.startFound && !nextLineStart, CONTINUES ON NEXT LINE ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
 		return l.lexReadLine
 	}
 
-	//Description line
+	//Description line. These are lines that have no start or end tag that belong to them.
+	// End's here.
 	if !start && !end && !l.startFound && nextLineStart {
 		fmt.Println(" ***DESC", l.currentLineNR, " : !start && !end && !l.startFound && nextLineStart ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
