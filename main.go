@@ -19,6 +19,13 @@ import (
 
 const fileName = "ardrone3.xml"
 
+const (
+	chrAngleStart = '<'
+	chrAngleEnd   = '>'
+	chrBlankSpace = ' '
+	chrEqual      = '='
+)
+
 type lexer struct {
 	fileReader      *bufio.Reader //buffer used for reading file lines.
 	currentLineNR   int           //the line nr. being read
@@ -97,14 +104,17 @@ func (l *lexer) lexChr() stateFunc {
 	//
 	for l.workingPosition < len(l.workingLine) {
 		switch l.workingLine[l.workingPosition] {
-		case '<':
-			//fmt.Println("------FOUND START BRACKET CHR--------")
+		case chrAngleStart:
+			fmt.Println("------FOUND START BRACKET CHR--------")
 			//TODO: Do something...........................
-		case '>':
-			//fmt.Println("------FOUND END BRACKET CHR----------")
+		case chrAngleEnd:
+			fmt.Println("------FOUND END BRACKET CHR----------")
 			//TODO: Do something...........................
-		case '=':
-			//fmt.Println("------FOUND EQUAL SIGN CHR----------")
+		case chrEqual:
+			fmt.Println("------FOUND EQUAL SIGN CHR----------")
+			//TODO: Do something...........................
+		case chrBlankSpace:
+			fmt.Println("------FOUND BLANK SPACE CHR----------")
 			//TODO: Do something...........................
 		}
 
@@ -116,7 +126,7 @@ func (l *lexer) lexChr() stateFunc {
 
 //lexCheckLineType checks what kind of line we are dealing with. If the line belongs
 // together with the line following after, the lines will be combined into a single
-// string
+// string to make it clearer what belongs to a given tag while lexing.
 // If string is blank, or end of string is reached we exit, and read a new line.
 func (l *lexer) lexCheckLineType() stateFunc {
 	// If the line is blank, return and read a new line
@@ -159,7 +169,7 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	if !start && end && l.startFound {
 		fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.startFound, CONTINUES ON NEXT LINE ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
-		return l.lexPrint
+		return l.lexChr
 	}
 
 	//Description line. These are lines that have no start or end tag that belong to them.
@@ -175,9 +185,10 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	if !start && !end && !l.startFound && nextLineStart {
 		fmt.Println(" ***DESC", l.currentLineNR, " : !start && !end && !l.startFound && nextLineStart ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
-		return l.lexPrint
+		return l.lexChr
 	}
 
+	//Since nothing matched, we can set startFound back to false, so it will be ready for a new tag line.
 	l.startFound = false
 	// The print and return below should optimally never happen.
 	// Check it's output to figure what is not detected in the if's above.
