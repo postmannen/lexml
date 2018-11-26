@@ -91,7 +91,7 @@ func (l *lexer) lexStart() {
 func (l *lexer) lexPrint() stateFunc {
 	fmt.Println(l.currentLineNR, l.workingLine)
 	fmt.Println("-------------------------------------------------------------------------")
-	//We reset the working line here
+	//We reset variables here, since this is the last link in the chain of functions.
 	l.workingLine = ""
 	return l.lexReadLine()
 }
@@ -167,8 +167,9 @@ func (l *lexer) lexCheckLineType() stateFunc {
 
 	//TAG: This should indicate that we found the last line of several that have to be combined
 	if !start && end && l.startFound {
-		fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.startFound, CONTINUES ON NEXT LINE ***")
+		fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.startFound, DONE COMBINING LINES ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
+		l.startFound = false //end found, set startFound back to false to be ready for finding new tag.
 		return l.lexChr
 	}
 
@@ -188,8 +189,7 @@ func (l *lexer) lexCheckLineType() stateFunc {
 		return l.lexChr
 	}
 
-	//Since nothing matched, we can set startFound back to false, so it will be ready for a new tag line.
-	l.startFound = false
+	// ---------------------The code should never exexute the code below-----------------------
 	// The print and return below should optimally never happen.
 	// Check it's output to figure what is not detected in the if's above.
 	fmt.Println("DEBUG: *uncaught line!! :", l.currentLineNR, l.workingLine)
