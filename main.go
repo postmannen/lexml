@@ -131,6 +131,7 @@ func (l *lexer) lexXMLSymbol() stateFunc {
 func (l *lexer) lexTagName() stateFunc {
 	var start bool
 	var end bool
+	var tn []byte
 
 	l.workingPosition++
 	//....check if there is a / following the <, then it is an end tag.
@@ -154,9 +155,12 @@ func (l *lexer) lexTagName() stateFunc {
 			fmt.Printf("start = %v, end = %v \n", start, end)
 			break
 		}
+		//if none of the above, we can safely add the chr to the slice
+		tn = append(tn, l.workingLine[l.workingPosition])
 		l.workingPosition++
 	}
 
+	fmt.Printf("--- Found tag name '%v'\n", string(tn))
 	//....check for the first space, and grab the letters between < and space for tag name.
 
 	//we return lexXMLSymbol since we know we want to check if there is more to do with the line
