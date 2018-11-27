@@ -34,7 +34,7 @@ type lexer struct {
 	EOF             bool          //used for proper ending of readLine method.
 	workingLine     string        //the line being worked on. Can be a collection of several lines.
 	workingPosition int           //the chr position we're currently working at in line
-	startFound      bool          //used to tell if a start was found so we can separate descriptions (which have to tags) from the rest while making the lexer.workingLine.
+	firstLineFound  bool          //used to tell if a start tag was found so we can separate descriptions (which have to tags) from the rest while making the lexer.workingLine.
 }
 
 //newLexer will return a *lexer type, it takes a pointer to a file as input.
@@ -96,17 +96,21 @@ func (l *lexer) lexPrint() stateFunc {
 	return l.lexReadLine()
 }
 
-//lexChr will work itselves one character position at a time the string line,
+//lexXMLSymbol will work itselves one character position at a time the string line,
 // and do some action based on the type of character found.
+// Checking if a line is done with lexing is done here by checking if working
+// position < len. If greater we're done lexing the line, and can continue with
+// the next operation.
 //
-func (l *lexer) lexChr() stateFunc {
+func (l *lexer) lexXMLSymbol() stateFunc {
 	//Check all the individual characters of the string
 	//
 	for l.workingPosition < len(l.workingLine) {
 		switch l.workingLine[l.workingPosition] {
 		case chrAngleStart:
 			fmt.Println("------FOUND START BRACKET CHR--------")
-			//TODO: Do something...........................
+			return l.lexTagName //find tag name
+
 		case chrAngleEnd:
 			fmt.Println("------FOUND END BRACKET CHR----------")
 			//TODO: Do something...........................
@@ -122,6 +126,41 @@ func (l *lexer) lexChr() stateFunc {
 	}
 
 	return l.lexPrint
+}
+
+func (l *lexer) lexTagName() stateFunc {
+	var start bool
+	var end bool
+
+	l.workingPosition++
+	//....check if there is a / following the <, then it is an end tag.
+	if l.workingLine[l.workingPosition] == '/' {
+		fmt.Println("--------FOUND / AFTER <", l.currentLineNR)
+		end = true
+		l.workingPosition++
+	}
+
+	for {
+		//look for space, the name ends where the space is.
+		if l.workingLine[l.workingPosition] == ' ' {
+			fmt.Println("---------FOUND SPACE", l.currentLineNR)
+			fmt.Printf("start = %v, end = %v \n", start, end)
+			break
+		}
+		//End tags dont have any attributes, so the '>' will come directly after the tag name.
+		// The name ends where the '>' is.
+		if l.workingLine[l.workingPosition] == '>' {
+			fmt.Println("---------FOUND '>', WHICH INDICATED AN END TAG", l.currentLineNR)
+			fmt.Printf("start = %v, end = %v \n", start, end)
+			break
+		}
+		l.workingPosition++
+	}
+
+	//....check for the first space, and grab the letters between < and space for tag name.
+
+	//we return lexXMLSymbol since we know we want to check if there is more to do with the line
+	return l.lexXMLSymbol
 }
 
 //lexCheckLineType checks what kind of line we are dealing with. If the line belongs
@@ -142,51 +181,51 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	//TAG: set the workingLine = currentLine and go directly to lexing.
 	if start && end {
 		fmt.Println(" ***TAG ", l.currentLineNR, ": HAS START AND END BRACKET, Normal tag line ***")
-		l.startFound = false
+		l.firstLineFound = false
 		l.workingLine = l.currentLine
-		return l.lexChr
+		return l.lexXMLSymbol
 	}
 
 	// TAG: This indicates this is the first line with a start tag, and the rest are on the following lines.
-	// Set initial workingLine=currentLine, and read another line. We set l.startfound to true, to signal
+	// Set initial workingLine=currentLine, and read another line. We set l.firstLineFound to true, to signal
 	// that we want to add more lines later to the current working line.
 	if start && !end {
 		fmt.Println(" ***TAG ", l.currentLineNR, " : start && !end, CONTINUES ON NEXT LINE ***")
-		l.startFound = true
+		l.firstLineFound = true
 		l.workingLine = l.workingLine + " " + l.currentLine
 		return l.lexReadLine
 	}
 
 	// TAG: This indicates we have found a start earlier, and that we need to add this currentLine to the
 	// existing content of the workingLine, and read another line
-	if !start && !end && l.startFound {
-		fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.startFound, CONTINUES ON NEXT LINE ***")
+	if !start && !end && l.firstLineFound {
+		fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.firstLineFound, CONTINUES ON NEXT LINE ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
 		return l.lexReadLine
 	}
 
 	//TAG: This should indicate that we found the last line of several that have to be combined
-	if !start && end && l.startFound {
-		fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.startFound, DONE COMBINING LINES ***")
+	if !start && end && l.firstLineFound {
+		fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.firstLineFound, DONE COMBINING LINES ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
-		l.startFound = false //end found, set startFound back to false to be ready for finding new tag.
-		return l.lexChr
+		l.firstLineFound = false //end found, set firstLineFound back to false to be ready for finding new tag.
+		return l.lexXMLSymbol
 	}
 
 	//Description line. These are lines that have no start or end tag that belong to them.
 	// Starts, but continues on the next line.
-	if !start && !end && !l.startFound && !nextLineStart {
-		fmt.Println(" ***DESC", l.currentLineNR, ": !start && !end && !l.startFound && !nextLineStart, CONTINUES ON NEXT LINE ***")
+	if !start && !end && !l.firstLineFound && !nextLineStart {
+		fmt.Println(" ***DESC", l.currentLineNR, ": !start && !end && !l.firstLineFound && !nextLineStart, CONTINUES ON NEXT LINE ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
 		return l.lexReadLine
 	}
 
 	//Description line. These are lines that have no start or end tag that belong to them.
 	// End's here.
-	if !start && !end && !l.startFound && nextLineStart {
-		fmt.Println(" ***DESC", l.currentLineNR, " : !start && !end && !l.startFound && nextLineStart ***")
+	if !start && !end && !l.firstLineFound && nextLineStart {
+		fmt.Println(" ***DESC", l.currentLineNR, " : !start && !end && !l.firstLineFound && nextLineStart ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
-		return l.lexChr
+		return l.lexXMLSymbol
 	}
 
 	// ---------------------The code should never exexute the code below-----------------------
