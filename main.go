@@ -48,13 +48,13 @@ func newLexer(fh *os.File) *lexer {
 //stateFunc is the defenition of a state function.
 type stateFunc func() stateFunc
 
-//lexReadLine will allways read the next line, and move the previous next line
+//lexReadFileLine will allways read the next line, and move the previous next line
 // into current line on next run. All spaces and carriage returns are removed.
 // Since we are working on the line that was read on the prevoius run, we will
 // set l.EOF to true as our exit parameter if error==io.EOF, so the whole
 // function is called one more time if error=io.EOF so we also get the last line
 // of the file moved into l.currentLine.
-func (l *lexer) lexReadLine() stateFunc {
+func (l *lexer) lexReadFileLine() stateFunc {
 	l.workingPosition = 0
 	l.currentLineNR++
 	l.currentLine = l.nextLine
@@ -77,7 +77,7 @@ func (l *lexer) lexReadLine() stateFunc {
 // will check if the current ran method returned nil instead of a new method
 // to exit.
 func (l *lexer) lexStart() {
-	fn := l.lexReadLine()
+	fn := l.lexReadFileLine()
 	for {
 		fn = fn()
 		if fn == nil {
@@ -93,16 +93,16 @@ func (l *lexer) lexPrint() stateFunc {
 	fmt.Println("-------------------------------------------------------------------------")
 	//We reset variables here, since this is the last link in the chain of functions.
 	l.workingLine = ""
-	return l.lexReadLine()
+	return l.lexReadFileLine()
 }
 
-//lexXMLSymbol will work itselves one character position at a time the string line,
+//lexLineContent will work itselves one character position at a time the string line,
 // and do some action based on the type of character found.
 // Checking if a line is done with lexing is done here by checking if working
 // position < len. If greater we're done lexing the line, and can continue with
 // the next operation.
 //
-func (l *lexer) lexXMLSymbol() stateFunc {
+func (l *lexer) lexLineContent() stateFunc {
 	//Check all the individual characters of the string
 	//
 	for l.workingPosition < len(l.workingLine) {
@@ -116,7 +116,7 @@ func (l *lexer) lexXMLSymbol() stateFunc {
 			//TODO: Do something...........................
 		case chrEqual:
 			fmt.Println("------FOUND EQUAL SIGN CHR----------")
-			//TODO: Do something...........................
+			return l.lexTagArguments
 		case chrBlankSpace:
 			fmt.Println("------FOUND BLANK SPACE CHR----------")
 			//TODO: Do something...........................
@@ -126,6 +126,13 @@ func (l *lexer) lexXMLSymbol() stateFunc {
 	}
 
 	return l.lexPrint
+}
+
+//lexTagArguments will pick out all the arguments "arg=value".
+func (l *lexer) lexTagArguments() stateFunc {
+
+	l.workingPosition++
+	return l.lexLineContent
 }
 
 func (l *lexer) lexTagName() stateFunc {
@@ -163,8 +170,8 @@ func (l *lexer) lexTagName() stateFunc {
 	fmt.Printf("--- Found tag name '%v'\n", string(tn))
 	//....check for the first space, and grab the letters between < and space for tag name.
 
-	//we return lexXMLSymbol since we know we want to check if there is more to do with the line
-	return l.lexXMLSymbol
+	//we return lexLineContent since we know we want to check if there is more to do with the line
+	return l.lexLineContent
 }
 
 //lexCheckLineType checks what kind of line we are dealing with. If the line belongs
@@ -175,7 +182,7 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	// If the line is blank, return and read a new line
 	if len(l.currentLine) == 0 {
 		log.Println("NOTE ", l.currentLineNR, ": blank line, getting out and reading the next line")
-		return l.lexReadLine
+		return l.lexReadFileLine
 	}
 
 	start := strings.HasPrefix(l.currentLine, "<")
@@ -187,7 +194,7 @@ func (l *lexer) lexCheckLineType() stateFunc {
 		fmt.Println(" ***TAG ", l.currentLineNR, ": HAS START AND END BRACKET, Normal tag line ***")
 		l.firstLineFound = false
 		l.workingLine = l.currentLine
-		return l.lexXMLSymbol
+		return l.lexLineContent
 	}
 
 	// TAG: This indicates this is the first line with a start tag, and the rest are on the following lines.
@@ -197,7 +204,7 @@ func (l *lexer) lexCheckLineType() stateFunc {
 		fmt.Println(" ***TAG ", l.currentLineNR, " : start && !end, CONTINUES ON NEXT LINE ***")
 		l.firstLineFound = true
 		l.workingLine = l.workingLine + " " + l.currentLine
-		return l.lexReadLine
+		return l.lexReadFileLine
 	}
 
 	// TAG: This indicates we have found a start earlier, and that we need to add this currentLine to the
@@ -205,7 +212,7 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	if !start && !end && l.firstLineFound {
 		fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.firstLineFound, CONTINUES ON NEXT LINE ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
-		return l.lexReadLine
+		return l.lexReadFileLine
 	}
 
 	//TAG: This should indicate that we found the last line of several that have to be combined
@@ -213,7 +220,7 @@ func (l *lexer) lexCheckLineType() stateFunc {
 		fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.firstLineFound, DONE COMBINING LINES ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
 		l.firstLineFound = false //end found, set firstLineFound back to false to be ready for finding new tag.
-		return l.lexXMLSymbol
+		return l.lexLineContent
 	}
 
 	//Description line. These are lines that have no start or end tag that belong to them.
@@ -221,7 +228,7 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	if !start && !end && !l.firstLineFound && !nextLineStart {
 		fmt.Println(" ***DESC", l.currentLineNR, ": !start && !end && !l.firstLineFound && !nextLineStart, CONTINUES ON NEXT LINE ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
-		return l.lexReadLine
+		return l.lexReadFileLine
 	}
 
 	//Description line. These are lines that have no start or end tag that belong to them.
@@ -229,7 +236,7 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	if !start && !end && !l.firstLineFound && nextLineStart {
 		fmt.Println(" ***DESC", l.currentLineNR, " : !start && !end && !l.firstLineFound && nextLineStart ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
-		return l.lexXMLSymbol
+		return l.lexLineContent
 	}
 
 	// ---------------------The code should never exexute the code below-----------------------
