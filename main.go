@@ -130,6 +130,13 @@ func (l *lexer) lexLineContent() stateFunc {
 
 //lexTagArguments will pick out all the arguments "arg=value".
 func (l *lexer) lexTagArguments() stateFunc {
+	p1 := findChrPositionBefore(l.workingLine, ' ', l.workingPosition)
+	arg := findLettersBetween(l.workingLine, p1, l.workingPosition)
+	fmt.Printf("---------------Found argument : %v \n", arg)
+
+	p2 := findChrPositionAfter(l.workingLine, ' ', l.workingPosition)
+	value := findLettersBetween(l.workingLine, l.workingPosition+1, p2)
+	fmt.Printf("---------------Found argument value : %v \n", value)
 
 	l.workingPosition++
 	return l.lexLineContent

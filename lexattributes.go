@@ -1,6 +1,9 @@
 package main
 
-import "log"
+import (
+	"log"
+	"strings"
+)
 
 //findChrPositionBefore .
 // Searches backwards in a string from a given positions,
@@ -42,7 +45,8 @@ func findChrPositionAfter(s string, preChr byte, origChrPosition int) (nextChrPo
 			break
 		}
 
-		if s[p] == preChr {
+		//When value is the last thing in a line, it will be followed by '>' and not a space.
+		if s[p] == preChr || s[p] == '>' {
 			nextChrPosition = p
 			break
 		}
@@ -65,6 +69,7 @@ func findLettersBetween(s string, firstPosition int, secondPosition int) (word s
 		firstPosition++
 	}
 	word = string(letters)
+	word = strings.Trim(word, "\"")
 
 	return
 }
