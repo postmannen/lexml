@@ -22,7 +22,6 @@ const fileName = "ardrone3.xml"
 const (
 	chrAngleStart = '<'
 	chrAngleEnd   = '>'
-	chrBlankSpace = ' '
 	chrEqual      = '='
 )
 
@@ -102,6 +101,11 @@ func (l *lexer) lexPrint() stateFunc {
 // position < len. If greater we're done lexing the line, and can continue with
 // the next operation.
 //
+//All functions returned from this function will return back here to continue the iteration
+// of the specific line until the end of line, then it will chose the last return at the
+// bottom of the function, and get out of the looping back into this function for the specific
+// line
+//
 func (l *lexer) lexLineContent() stateFunc {
 	//Check all the individual characters of the string
 	//
@@ -117,9 +121,6 @@ func (l *lexer) lexLineContent() stateFunc {
 		case chrEqual:
 			fmt.Println("------FOUND EQUAL SIGN CHR----------")
 			return l.lexTagArguments
-		case chrBlankSpace:
-			fmt.Println("------FOUND BLANK SPACE CHR----------")
-			//TODO: Do something...........................
 		}
 
 		l.workingPosition++
@@ -148,7 +149,6 @@ func (l *lexer) lexTagArguments() stateFunc {
 //
 func findChrPositionBefore(s string, preChr byte, origChrPosition int) (preChrPosition int) {
 	p := origChrPosition
-
 	//find the first space before the preceding word
 	for {
 		p--
@@ -172,11 +172,9 @@ func findChrPositionBefore(s string, preChr byte, origChrPosition int) (preChrPo
 //
 func findChrPositionAfter(s string, preChr byte, origChrPosition int) (nextChrPosition int) {
 	p := origChrPosition
-
 	//find the first space before the preceding word
 	for {
 		p++
-
 		if p > len(s)-1 {
 			log.Println("Found no space before the equal sign, reached the end of the line")
 			break
@@ -199,7 +197,6 @@ func findChrPositionAfter(s string, preChr byte, origChrPosition int) (nextChrPo
 //'
 func findLettersBetween(s string, firstPosition int, secondPosition int) (word string) {
 	letters := []byte{}
-
 	//as long as first pos'ition is lower than second position....
 	for firstPosition < secondPosition {
 		letters = append(letters, s[firstPosition])
@@ -309,6 +306,8 @@ func (l *lexer) lexCheckLineType() stateFunc {
 
 	//Description line. These are lines that have no start or end tag that belong to them.
 	// End's here.
+	//TODO: This one should not need to lexLineContent since there is just descriptions here,
+	// no need to lex inside, and it should be given a token immediately.
 	if !start && !end && !l.firstLineFound && nextLineStart {
 		fmt.Println(" ***DESC", l.currentLineNR, " : !start && !end && !l.firstLineFound && nextLineStart ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
