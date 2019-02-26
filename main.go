@@ -1,4 +1,4 @@
-/* The idea here is to create a lexer for the parrot.xml file which
+/*The idea here is to create a lexer for the parrot.xml file which
 holds the definition of the protocol used to control the Parrot Bebop 2 drone.
 The lexer will be build't by having one main run function who executes a function,
 and get a new function in return, that again will be executed next.
@@ -116,14 +116,17 @@ func (l *lexer) lexLineContent() stateFunc {
 	for l.workingPosition < len(l.workingLine) {
 		switch l.workingLine[l.workingPosition] {
 		case chrAngleStart:
-			fmt.Println("------FOUND START BRACKET CHR--------")
+			//fmt.Println("------FOUND START BRACKET CHR--------")
+			fmt.Printf("* tokenTagStart, %v\n", tokenTagStart)
 			return l.lexTagName //find tag name
 
 		case chrAngleEnd:
-			fmt.Println("------FOUND END BRACKET CHR----------")
+			//fmt.Println("------FOUND END BRACKET CHR----------")
+			fmt.Printf("* tokenTagEnd, %v\n", tokenTagEnd)
 			//TODO: Do something...........................
 		case chrEqual:
-			fmt.Println("------FOUND EQUAL SIGN CHR----------")
+			//fmt.Println("------FOUND EQUAL SIGN CHR----------")
+			fmt.Printf("* tokenArgumentFound, %v\n", tokenArgumentFound)
 			return l.lexTagArguments
 		}
 
@@ -137,11 +140,14 @@ func (l *lexer) lexLineContent() stateFunc {
 func (l *lexer) lexTagArguments() stateFunc {
 	p1 := findChrPositionBefore(l.workingLine, ' ', l.workingPosition)
 	arg := findLettersBetween(l.workingLine, p1, l.workingPosition)
-	fmt.Printf("---------------Found argument : %v \n", arg)
+	//fmt.Printf("---------------Found argument : %v \n", arg)
+	fmt.Printf("* tokenArgumentName, %v, text = %v\n", tokenArgumentName, arg)
 
-	p2 := findChrPositionAfter(l.workingLine, ' ', l.workingPosition)
+	//we add +1 to the working position below so we don't search and exit on the start quote.
+	p2 := findChrPositionAfter(l.workingLine, '"', l.workingPosition+1)
 	value := findLettersBetween(l.workingLine, l.workingPosition+1, p2)
-	fmt.Printf("---------------Found argument value : %v \n", value)
+	//fmt.Printf("---------------Found argument value : %v \n", value)
+	fmt.Printf("* tokenArgumentValue, %v, text = %v\n", tokenArgumentValue, value)
 
 	l.workingPosition++
 	return l.lexLineContent
@@ -212,31 +218,33 @@ func findLettersBetween(s string, firstPosition int, secondPosition int) (word s
 	return
 }
 
+//lexTagName looks for the tag name in that line
+// check for the first space, and grab the letters between < and space for tag name.
 func (l *lexer) lexTagName() stateFunc {
-	var start bool
-	var end bool
+	//var start bool
+	//var end bool
 	var tn []byte
 
 	l.workingPosition++
 	//....check if there is a / following the <, then it is an end tag.
 	if l.workingLine[l.workingPosition] == '/' {
-		fmt.Println("--------FOUND / AFTER <", l.currentLineNR)
-		end = true
+		//fmt.Println("--------FOUND / AFTER <", l.currentLineNR)
+		//end = true
 		l.workingPosition++
 	}
 
 	for {
 		//look for space, the name ends where the space is.
 		if l.workingLine[l.workingPosition] == ' ' {
-			fmt.Println("---------FOUND SPACE", l.currentLineNR)
-			fmt.Printf("start = %v, end = %v \n", start, end)
+			//fmt.Println("---------FOUND SPACE", l.currentLineNR)
+			//fmt.Printf("start = %v, end = %v \n", start, end)
 			break
 		}
 		//End tags dont have any attributes, so the '>' will come directly after the tag name.
 		// The name ends where the '>' is.
 		if l.workingLine[l.workingPosition] == '>' {
-			fmt.Println("---------FOUND '>', WHICH INDICATED AN END TAG", l.currentLineNR)
-			fmt.Printf("start = %v, end = %v \n", start, end)
+			//fmt.Println("---------FOUND '>', WHICH INDICATED AN END TAG", l.currentLineNR)
+			//fmt.Printf("start = %v, end = %v \n", start, end)
 			break
 		}
 		//if none of the above, we can safely add the chr to the slice
@@ -244,8 +252,8 @@ func (l *lexer) lexTagName() stateFunc {
 		l.workingPosition++
 	}
 
-	fmt.Printf("--- Found tag name '%v'\n", string(tn))
-	tokenChan <- token{tokenType: tokenStartTag, tokenText: string(tn)}
+	//fmt.Printf("--- Found tag name '%v'\n", string(tn))
+	fmt.Printf("* tokenTagName, %v, text = %v \n", tokenTagName, string(tn))
 
 	//we return lexLineContent since we know we want to check if there is more to do with the line
 	return l.lexLineContent
@@ -258,7 +266,7 @@ func (l *lexer) lexTagName() stateFunc {
 func (l *lexer) lexCheckLineType() stateFunc {
 	// If the line is blank, return and read a new line
 	if len(l.currentLine) == 0 {
-		log.Println("NOTE ", l.currentLineNR, ": blank line, getting out and reading the next line")
+		//log.Println("NOTE ", l.currentLineNR, ": blank line, getting out and reading the next line")
 		return l.lexReadFileLine
 	}
 
@@ -268,7 +276,7 @@ func (l *lexer) lexCheckLineType() stateFunc {
 
 	//TAG: set the workingLine = currentLine and go directly to lexing.
 	if start && end {
-		fmt.Println(" ***TAG ", l.currentLineNR, ": HAS START AND END BRACKET, Normal tag line ***")
+		//fmt.Println(" ***TAG ", l.currentLineNR, ": HAS START AND END BRACKET, Normal tag line ***")
 		l.firstLineFound = false
 		l.workingLine = l.currentLine
 		return l.lexLineContent
@@ -278,7 +286,7 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	// Set initial workingLine=currentLine, and read another line. We set l.firstLineFound to true, to signal
 	// that we want to add more lines later to the current working line.
 	if start && !end {
-		fmt.Println(" ***TAG ", l.currentLineNR, " : start && !end, CONTINUES ON NEXT LINE ***")
+		//fmt.Println(" ***TAG ", l.currentLineNR, " : start && !end, CONTINUES ON NEXT LINE ***")
 		l.firstLineFound = true
 		l.workingLine = l.workingLine + " " + l.currentLine
 		return l.lexReadFileLine
@@ -287,14 +295,14 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	// TAG: This indicates we have found a start earlier, and that we need to add this currentLine to the
 	// existing content of the workingLine, and read another line
 	if !start && !end && l.firstLineFound {
-		fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.firstLineFound, CONTINUES ON NEXT LINE ***")
+		//fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.firstLineFound, CONTINUES ON NEXT LINE ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
 		return l.lexReadFileLine
 	}
 
 	//TAG: This should indicate that we found the last line of several that have to be combined
 	if !start && end && l.firstLineFound {
-		fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.firstLineFound, DONE COMBINING LINES ***")
+		//fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.firstLineFound, DONE COMBINING LINES ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
 		l.firstLineFound = false //end found, set firstLineFound back to false to be ready for finding new tag.
 		return l.lexLineContent
@@ -303,7 +311,7 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	//Description line. These are lines that have no start or end tag that belong to them.
 	// Starts, but continues on the next line.
 	if !start && !end && !l.firstLineFound && !nextLineStart {
-		fmt.Println(" ***DESC", l.currentLineNR, ": !start && !end && !l.firstLineFound && !nextLineStart, CONTINUES ON NEXT LINE ***")
+		//fmt.Println(" ***DESC", l.currentLineNR, ": !start && !end && !l.firstLineFound && !nextLineStart, CONTINUES ON NEXT LINE ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
 		return l.lexReadFileLine
 	}
@@ -313,8 +321,9 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	//TODO: This one should not need to lexLineContent since there is just descriptions here,
 	// no need to lex inside, and it should be given a token immediately.
 	if !start && !end && !l.firstLineFound && nextLineStart {
-		fmt.Println(" ***DESC", l.currentLineNR, " : !start && !end && !l.firstLineFound && nextLineStart ***")
+		//fmt.Println(" ***DESC", l.currentLineNR, " : !start && !end && !l.firstLineFound && nextLineStart ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
+		fmt.Printf("* tokenDescription, %v, text = %v \n", tokenDescription, l.workingLine)
 		return l.lexLineContent
 	}
 
@@ -337,11 +346,15 @@ Then the token is put on the channel to be received by the parser, and the go st
 // An </start> end tag will have token end.
 type tokenType int
 
+//XML tag - element - node, 3 names for the same thing.
 const (
-	tokenStartTag tokenType = iota
-	tokenEndTag
+	tokenTagStart tokenType = iota
+	tokenTagEnd
+	tokenTagName
+	tokenArgumentFound
 	tokenArgumentName
 	tokenArgumentValue
+	tokenDescription
 )
 
 type token struct {
@@ -372,7 +385,6 @@ func main() {
 
 	wg.Add(1)
 	go readToken()
-	tokenChan <- token{tokenType: tokenStartTag, tokenText: "hest"}
 
 	lex := newLexer(fh)
 	lex.lexStart()
