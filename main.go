@@ -15,6 +15,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 )
 
 const fileName = "ardrone3.xml"
@@ -60,6 +61,8 @@ func (l *lexer) lexReadFileLine() stateFunc {
 	line, _, err := l.fileReader.ReadLine()
 	if err != nil {
 		if l.EOF {
+			close(tokenChan)
+			log.Println("closing channel, EOF of file")
 			return nil
 		}
 		if err == io.EOF {
@@ -76,6 +79,7 @@ func (l *lexer) lexReadFileLine() stateFunc {
 // will check if the current ran method returned nil instead of a new method
 // to exit.
 func (l *lexer) lexStart() {
+
 	fn := l.lexReadFileLine()
 	for {
 		fn = fn()
@@ -241,7 +245,7 @@ func (l *lexer) lexTagName() stateFunc {
 	}
 
 	fmt.Printf("--- Found tag name '%v'\n", string(tn))
-	//....check for the first space, and grab the letters between < and space for tag name.
+	tokenChan <- token{tokenType: tokenStartTag, tokenText: string(tn)}
 
 	//we return lexLineContent since we know we want to check if there is more to do with the line
 	return l.lexLineContent
@@ -321,13 +325,57 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	return l.lexPrint
 }
 
+//------------------Tokens--------------------------------------------
+/*
+Example for how to send and receive tokens from the lexer.
+When the lexer find something, it creates a token of type token. It will choose the type of token found and put that into tokenType, and the text found will be put into the argument.
+Then the token is put on the channel to be received by the parser, and the go struct code will be generated within the switch/case selection.
+*/
+
+//tokenType is the type describing a token.
+// A <start> start tag will have token start.
+// An </start> end tag will have token end.
+type tokenType int
+
+const (
+	tokenStartTag tokenType = iota
+	tokenEndTag
+	tokenArgumentName
+	tokenArgumentValue
+)
+
+type token struct {
+	tokenType        //type of token, tokenStart, tokenStop, etc.
+	tokenText string //the actual text found in the xml while lexing
+}
+
+//readToken will pickup and read all the tokens that is received from the lexer
+func readToken() {
+	for v := range tokenChan {
+		fmt.Println("*readToken*", v)
+	}
+	wg.Done()
+}
+
+//--------------------------------------------------------------------
+
+var tokenChan chan token
+var wg sync.WaitGroup
+
 func main() {
+	tokenChan = make(chan token)
+
 	fh, err := os.Open(fileName)
 	if err != nil {
 		log.Println("Error: opening file: ", err)
 	}
 
+	wg.Add(1)
+	go readToken()
+	tokenChan <- token{tokenType: tokenStartTag, tokenText: "hest"}
+
 	lex := newLexer(fh)
 	lex.lexStart()
 
+	wg.Wait()
 }
