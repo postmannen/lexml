@@ -334,7 +334,7 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	return l.lexPrint
 }
 
-//------------------Tokens--------------------------------------------
+//------------------------------------Tokens--------------------------------------------
 /*
 Example for how to send and receive tokens from the lexer.
 When the lexer find something, it creates a token of type token. It will choose the type of token found and put that into tokenType, and the text found will be put into the argument.
@@ -370,7 +370,7 @@ func readToken() {
 	wg.Done()
 }
 
-//--------------------------------------------------------------------
+//------------------------------------------------------------------------------------------
 
 var tokenChan chan token
 var wg sync.WaitGroup
