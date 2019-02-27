@@ -18,8 +18,6 @@ import (
 	"sync"
 )
 
-const fileName = "ardrone3.xml"
-
 const (
 	chrAngleStart = '<'
 	chrAngleEnd   = '>'
@@ -35,6 +33,8 @@ type lexer struct {
 	workingLine     string        //the line being worked on. Can be a collection of several lines.
 	workingPosition int           //the chr position we're currently working at in line
 	firstLineFound  bool          //used to tell if a start tag was found so we can separate descriptions (which have to tags) from the rest while making the lexer.workingLine.
+	foundEqual      bool          //used to detect if a line contains any argument/attributes, or just text
+	elementLine     bool          //lines with both a start and an end tag.
 }
 
 //newLexer will return a *lexer type, it takes a pointer to a file as input.
@@ -56,6 +56,7 @@ type stateFunc func() stateFunc
 // of the file moved into l.currentLine.
 func (l *lexer) lexReadFileLine() stateFunc {
 	l.workingPosition = 0
+	l.elementLine = false
 	l.currentLineNR++
 	l.currentLine = l.nextLine
 	line, _, err := l.fileReader.ReadLine()
@@ -115,17 +116,18 @@ func (l *lexer) lexLineContent() stateFunc {
 	//
 	for l.workingPosition < len(l.workingLine) {
 		switch l.workingLine[l.workingPosition] {
-		case chrAngleStart:
-			//fmt.Println("------FOUND START BRACKET CHR--------")
+		case '<':
+			fmt.Println("------FOUND START BRACKET CHR--------")
 			fmt.Printf("* tokenTagStart, %v\n", tokenTagStart)
 			return l.lexTagName //find tag name
 
-		case chrAngleEnd:
-			//fmt.Println("------FOUND END BRACKET CHR----------")
+		case '>':
+			fmt.Println("------FOUND END BRACKET CHR----------")
 			fmt.Printf("* tokenTagEnd, %v\n", tokenTagEnd)
 			//TODO: Do something...........................
-		case chrEqual:
-			//fmt.Println("------FOUND EQUAL SIGN CHR----------")
+		case '=':
+			l.foundEqual = true
+			fmt.Println("------FOUND EQUAL SIGN CHR----------")
 			fmt.Printf("* tokenArgumentFound, %v\n", tokenArgumentFound)
 			return l.lexTagArguments
 		}
@@ -133,6 +135,7 @@ func (l *lexer) lexLineContent() stateFunc {
 		l.workingPosition++
 	}
 
+	l.foundEqual = false
 	return l.lexPrint
 }
 
@@ -234,17 +237,19 @@ func (l *lexer) lexTagName() stateFunc {
 	}
 
 	for {
-		//look for space, the name ends where the space is.
+		//Look for space.  The name ends where the space is, this type of line only has one tag,
+		// and closes at the end by />, and not using and end-tag
 		if l.workingLine[l.workingPosition] == ' ' {
 			//fmt.Println("---------FOUND SPACE", l.currentLineNR)
 			//fmt.Printf("start = %v, end = %v \n", start, end)
 			break
 		}
-		//End tags dont have any attributes, so the '>' will come directly after the tag name.
-		// The name ends where the '>' is.
+		//Look for closing angle bracket. The name ends where the '>' is. This type of line is
+		// called an element, and has both a start and an end tag
 		if l.workingLine[l.workingPosition] == '>' {
-			//fmt.Println("---------FOUND '>', WHICH INDICATED AN END TAG", l.currentLineNR)
+			//fmt.Println("---------FOUND '>', WHICH INDICATED AN END BRACKET", l.currentLineNR)
 			//fmt.Printf("start = %v, end = %v \n", start, end)
+			l.elementLine = true
 			break
 		}
 		//if none of the above, we can safely add the chr to the slice
@@ -376,11 +381,20 @@ var tokenChan chan token
 var wg sync.WaitGroup
 
 func main() {
+
 	tokenChan = make(chan token)
+
+	a := os.Args
+	if len(a) < 2 {
+		log.Fatal("Specify an xml file\n")
+
+	}
+
+	fileName := os.Args[1]
 
 	fh, err := os.Open(fileName)
 	if err != nil {
-		log.Println("Error: opening file: ", err)
+		log.Fatal("Error: opening file: ", err)
 	}
 
 	wg.Add(1)
