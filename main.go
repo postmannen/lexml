@@ -93,7 +93,7 @@ func (l *lexer) lexStart() {
 
 //lexPrint will print the current working line.
 func (l *lexer) lexPrint() stateFunc {
-	fmt.Println(l.currentLineNR, l.workingLine)
+	fmt.Printf("\n Line nr=%v, %v\n", l.currentLineNR, l.workingLine)
 	fmt.Println("-------------------------------------------------------------------------")
 	//We reset variables here, since this is the last link in the chain of functions.
 	l.workingLine = ""
@@ -117,17 +117,28 @@ func (l *lexer) lexLineContent() stateFunc {
 	for l.workingPosition < len(l.workingLine) {
 		switch l.workingLine[l.workingPosition] {
 		case '<':
-			fmt.Println("------FOUND START BRACKET CHR--------")
+			//check if it is an ending of a tag
+			if l.workingLine[l.workingPosition+1] == '/' {
+				//If there was no attributes, there are likely to be a text string between the tags.
+				// Check for it !
+				if l.foundEqual == false {
+					fmt.Printf("* tokenJustText = %v\n", l.lexStartStopTag())
+				}
+
+				// fmt.Println("------FOUND END BRACKET CHR----------")
+				fmt.Printf("* tokenTagEnd, %v\n", tokenTagEnd)
+
+				break //found end, no need to check further, break out.
+			}
+
+			// fmt.Println("------FOUND START BRACKET CHR--------")
 			fmt.Printf("* tokenTagStart, %v\n", tokenTagStart)
 			return l.lexTagName //find tag name
-
 		case '>':
-			fmt.Println("------FOUND END BRACKET CHR----------")
-			fmt.Printf("* tokenTagEnd, %v\n", tokenTagEnd)
-			//TODO: Do something...........................
+
 		case '=':
 			l.foundEqual = true
-			fmt.Println("------FOUND EQUAL SIGN CHR----------")
+			// fmt.Println("------FOUND EQUAL SIGN CHR----------")
 			fmt.Printf("* tokenArgumentFound, %v\n", tokenArgumentFound)
 			return l.lexTagArguments
 		}
