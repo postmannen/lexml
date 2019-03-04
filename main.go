@@ -10,18 +10,13 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"strings"
 	"sync"
-)
-
-const (
-	chrAngleStart = '<'
-	chrAngleEnd   = '>'
-	chrEqual      = '='
 )
 
 type lexer struct {
@@ -121,7 +116,7 @@ func (l *lexer) lexLineContent() stateFunc {
 			if l.workingLine[l.workingPosition+1] == '/' {
 				//If there was no attributes, there are likely to be a text string between the tags.
 				// Check for it !
-				if l.foundEqual == false {
+				if !l.foundEqual {
 					fmt.Printf("* tokenJustText = %v\n", l.lexStartStopTag())
 				}
 
@@ -401,9 +396,10 @@ func main() {
 
 	}
 
-	fileName := os.Args[1]
+	fileName := flag.String("fileName", "", "specify the filename to check")
+	flag.Parse()
 
-	fh, err := os.Open(fileName)
+	fh, err := os.Open(*fileName)
 	if err != nil {
 		log.Fatal("Error: opening file: ", err)
 	}

@@ -8,7 +8,7 @@ func (l *lexer) lexStartStopTag() (elementText string) {
 	//If no equal was detected in the line, it is most likely a line with a start,
 	// and an end tag, but just text inbetween, and we want to pick out that text.
 	// Example : <someTag>WE WANT THIS TEXT</someTag>
-	if l.foundEqual == false {
+	if !l.foundEqual {
 		// fmt.Println("-- FOUND NO EQUAL !!!!!!!!!!!")
 		//var firstStartAngleFound bool
 		//var firstStopAngleFound bool
