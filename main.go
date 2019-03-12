@@ -117,13 +117,18 @@ func (l *lexer) lexLineContent() stateFunc {
 				//If there was no attributes, there are likely to be a text string between the tags.
 				// Check for it !
 				if !l.foundEqual {
-					fmt.Printf("* tokenJustText = %v\n", l.lexStartStopTag())
+					t := l.lexStartStopTag()
+					//If some text was returned
+					if t != "" {
+						fmt.Printf("* tokenJustText = %v\n", t)
+					}
 				}
 
 				// fmt.Println("------FOUND END BRACKET CHR----------")
 				fmt.Printf("* tokenTagEnd, %v\n", tokenTagEnd)
 
-				break //found end, no need to check further, break out.
+				return l.lexTagName //find tag name
+				//break //found end, no need to check further, break out.
 			}
 
 			// fmt.Println("------FOUND START BRACKET CHR--------")
@@ -160,6 +165,27 @@ func (l *lexer) lexTagArguments() stateFunc {
 
 	l.workingPosition++
 	return l.lexLineContent
+}
+
+//checkForChrAfter takes a string, a position in a string, and a string pattern to look for as input.
+// Returns true if the character combination was found after the given position.
+// The function will first look for the first character in the given string,
+// and if that character is found we get into the inner for loop and loop over the
+// character pattern to check if the rest of the characters match.
+// If match we return, the value true, and exit the function.
+func checkForChrAfter(s string, curPos int, characters string) (found bool) {
+	for i := curPos; i < len(s)-1; i++ {
+		if s[i] == characters[0] {
+			for ii := 1; ii <= len(characters); ii++ {
+				if s[i+ii] == characters[ii] {
+					return true
+				}
+			}
+		}
+	}
+
+	//No match of the complete character string found, return false.
+	return false
 }
 
 //findChrPositionBefore .
@@ -376,7 +402,8 @@ type token struct {
 //readToken will pickup and read all the tokens that is received from the lexer
 func readToken() {
 	for v := range tokenChan {
-		fmt.Println("*readToken*", v)
+		fmt.Println("*readToken*", v.tokenType)
+		fmt.Println("*readToken*", v.tokenText)
 	}
 	wg.Done()
 }

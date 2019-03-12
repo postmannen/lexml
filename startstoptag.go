@@ -4,16 +4,13 @@ import (
 	"log"
 )
 
+//lexStartStopTag will check various versions of tags. Like if is a start tag, stop tag
+// tag with elements inside.
 func (l *lexer) lexStartStopTag() (elementText string) {
 	//If no equal was detected in the line, it is most likely a line with a start,
 	// and an end tag, but just text inbetween, and we want to pick out that text.
 	// Example : <someTag>WE WANT THIS TEXT</someTag>
 	if !l.foundEqual {
-		// fmt.Println("-- FOUND NO EQUAL !!!!!!!!!!!")
-		//var firstStartAngleFound bool
-		//var firstStopAngleFound bool
-		//var secondStartAngleFound bool
-		//var secondStopAngleFound bool
 		pos := 0
 		var posTextStart int
 		var posTextStop int
@@ -25,18 +22,14 @@ func (l *lexer) lexStartStopTag() (elementText string) {
 			}
 			switch {
 			case l.workingLine[pos] == '<' && pos == 0:
-				//firstStartAngleFound = true
 				//fmt.Println("-- firstStartAngle found", firstStartAngleFound)
 			case l.workingLine[pos] == '>' && pos == len(l.workingLine)-1:
-				//secondStopAngleFound = true
 				//fmt.Println("-- secondStopAngle found", secondStopAngleFound)
 			case l.workingLine[pos] == '>':
-				//firstStopAngleFound = true
 				posTextStart = pos + 1
 				//fmt.Println("-- firstStopAngle found", firstStopAngleFound)
 			case l.workingLine[pos] == '<':
 				posTextStop = pos - 1
-				//secondStartAngleFound = true
 				//fmt.Println("-- secondStartAngle found", secondStartAngleFound)
 			default:
 				//if there are more angle brackets than needed for a start and end tag

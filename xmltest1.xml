@@ -6,19 +6,14 @@ xsi:noNamespaceSchemaLocation="shiporder.xsd">
   <orderperson>John Smith</orderperson>
   <shipto>
     <name>Ola Nordmann</name>
-    <address>Langgt 23</address>
-    <city>4000 Stavanger</city>
-    <country>Norway</country>
   </shipto>
-  <item>
-    <title>Empire Burlesque</title>
-    <note>Special Edition</note>
-    <quantity>1</quantity>
-    <price>10.90</price>
-  </item>
-  <item>
-    <title>Hide your heart</title>
-    <quantity>1</quantity>
-    <price>9.90</price>
-  </item>
+  <cmd name="TakeOff" id="1"></cmd>
 </shiporder>
+<comment
+				title="Take off"
+				desc="Ask the drone to take off.\n
+				On the fixed wings (such as Disco): not used except to cancel a land."
+				support="0901;090c;090e"
+				result="On the quadcopters: the drone takes off if its [FlyingState](#1-4-1) was landed.\n
+				On the fixed wings, the landing process is aborted if the [FlyingState](#1-4-1) was landing.\n
+				Then, event [FlyingState](#1-4-1) is triggered."/>
