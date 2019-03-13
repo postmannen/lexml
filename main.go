@@ -148,6 +148,9 @@ func (l *lexer) lexLineContent() stateFunc {
 			if strings.Contains(l.workingLine, "/>") {
 				fmt.Printf("* tokenEndTag, %v\n", l.tagName)
 			}
+			if strings.Contains(l.workingLine, "?>") {
+				fmt.Printf("* tokenEndTag, %v\n", l.tagName)
+			}
 		case '=':
 			l.foundEqual = true
 			// fmt.Println("------FOUND EQUAL SIGN CHR----------")
