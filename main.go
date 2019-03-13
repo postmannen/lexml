@@ -2,9 +2,12 @@
 holds the definition of the protocol used to control the Parrot Bebop 2 drone.
 The lexer will be build't by having one main run function who executes a function,
 and get a new function in return, that again will be executed next.
-The program will be build't up by many smaller functions who server one single purpose
+The program will be build't up by many smaller functions who serve one single purpose
 in the production line, and they know what function to return next based on they're own
 simple logic.
+All tag lines spanning several lines will be concatenated into a single line to make the
+lexing easier. The concatenation will make sure that all the lines being lexed have a start
+and an end lile <a></a>, or <a/>.
 */
 package main
 
@@ -30,6 +33,7 @@ type lexer struct {
 	firstLineFound  bool          //used to tell if a start tag was found so we can separate descriptions (which have to tags) from the rest while making the lexer.workingLine.
 	foundEqual      bool          //used to detect if a line contains any argument/attributes, or just text
 	elementLine     bool          //lines with both a start and an end tag.
+	tagName         string        //to store the name of the tag while lexing a line.
 }
 
 //newLexer will return a *lexer type, it takes a pointer to a file as input.
@@ -112,7 +116,7 @@ func (l *lexer) lexLineContent() stateFunc {
 	for l.workingPosition < len(l.workingLine) {
 		switch l.workingLine[l.workingPosition] {
 		case '<':
-			//check if it is an ending of a tag
+			//check if it is an end tag which starts with </
 			if l.workingLine[l.workingPosition+1] == '/' {
 				//If there was no attributes, there are likely to be a text string between the tags.
 				// Check for it !
@@ -124,18 +128,20 @@ func (l *lexer) lexLineContent() stateFunc {
 					}
 				}
 
-				// fmt.Println("------FOUND END BRACKET CHR----------")
-				fmt.Printf("* tokenTagEnd, %v\n", tokenTagEnd)
+				fmt.Printf("* tokenEndTag, %v\n", tokenEndTag)
 
 				return l.lexTagName //find tag name
 				//break //found end, no need to check further, break out.
 			}
 
-			// fmt.Println("------FOUND START BRACKET CHR--------")
-			fmt.Printf("* tokenTagStart, %v\n", tokenTagStart)
+			//It was a start tag
+			fmt.Printf("* tokenStartTag, %v\n", tokenStartTag)
 			return l.lexTagName //find tag name
 		case '>':
-
+			if strings.Contains(l.workingLine, "/>") {
+				fmt.Printf("* tokenStartTagWithEnd, %v\n", l.tagName)
+				fmt.Printf("* tokenTagName, text = %v \n", l.tagName)
+			}
 		case '=':
 			l.foundEqual = true
 			// fmt.Println("------FOUND EQUAL SIGN CHR----------")
@@ -147,6 +153,7 @@ func (l *lexer) lexLineContent() stateFunc {
 	}
 
 	l.foundEqual = false
+	l.tagName = ""
 	return l.lexPrint
 }
 
@@ -290,7 +297,8 @@ func (l *lexer) lexTagName() stateFunc {
 	}
 
 	//fmt.Printf("--- Found tag name '%v'\n", string(tn))
-	fmt.Printf("* tokenTagName, %v, text = %v \n", tokenTagName, string(tn))
+	fmt.Printf("* tokenTagName, text = %v \n", string(tn))
+	l.tagName = string(tn)
 
 	//we return lexLineContent since we know we want to check if there is more to do with the line
 	return l.lexLineContent
@@ -385,8 +393,8 @@ type tokenType int
 
 //XML tag - element - node, 3 names for the same thing.
 const (
-	tokenTagStart tokenType = iota
-	tokenTagEnd
+	tokenStartTag tokenType = iota
+	tokenEndTag
 	tokenTagName
 	tokenArgumentFound
 	tokenArgumentName
