@@ -22,6 +22,15 @@ import (
 	"sync"
 )
 
+//tagType is used for storing if we are at the start or stop tag position while lexing a line.
+// This is used for choosing to send start or stop token with tag name as value.
+type tagType int
+
+const (
+	startTag tagType = iota
+	stopTag
+)
+
 type lexer struct {
 	fileReader      *bufio.Reader //buffer used for reading file lines.
 	currentLineNR   int           //the line nr. being read
@@ -32,8 +41,8 @@ type lexer struct {
 	workingPosition int           //the chr position we're currently working at in line
 	firstLineFound  bool          //used to tell if a start tag was found so we can separate descriptions (which have to tags) from the rest while making the lexer.workingLine.
 	foundEqual      bool          //used to detect if a line contains any argument/attributes, or just text
-	elementLine     bool          //lines with both a start and an end tag.
 	tagName         string        //to store the name of the tag while lexing a line.
+	tagTypeIs       tagType       //used to indicate if we are currently working on a start or a stop tag.
 }
 
 //newLexer will return a *lexer type, it takes a pointer to a file as input.
@@ -55,7 +64,6 @@ type stateFunc func() stateFunc
 // of the file moved into l.currentLine.
 func (l *lexer) lexReadFileLine() stateFunc {
 	l.workingPosition = 0
-	l.elementLine = false
 	l.currentLineNR++
 	l.currentLine = l.nextLine
 	line, _, err := l.fileReader.ReadLine()
@@ -121,26 +129,24 @@ func (l *lexer) lexLineContent() stateFunc {
 				//If there was no attributes, there are likely to be a text string between the tags.
 				// Check for it !
 				if !l.foundEqual {
-					t := l.lexStartStopTag()
+					t := l.lexTextBetweenTags()
 					//If some text was returned
 					if t != "" {
 						fmt.Printf("* tokenJustText = %v\n", t)
 					}
 				}
 
-				fmt.Printf("* tokenEndTag, %v\n", tokenEndTag)
-
+				l.tagTypeIs = stopTag
 				return l.lexTagName //find tag name
 				//break //found end, no need to check further, break out.
 			}
 
 			//It was a start tag
-			fmt.Printf("* tokenStartTag, %v\n", tokenStartTag)
+			l.tagTypeIs = startTag
 			return l.lexTagName //find tag name
 		case '>':
 			if strings.Contains(l.workingLine, "/>") {
-				fmt.Printf("* tokenStartTagWithEnd, %v\n", l.tagName)
-				fmt.Printf("* tokenTagName, text = %v \n", l.tagName)
+				fmt.Printf("* tokenEndTag, %v\n", l.tagName)
 			}
 		case '=':
 			l.foundEqual = true
@@ -270,35 +276,33 @@ func (l *lexer) lexTagName() stateFunc {
 	l.workingPosition++
 	//....check if there is a / following the <, then it is an end tag.
 	if l.workingLine[l.workingPosition] == '/' {
-		//fmt.Println("--------FOUND / AFTER <", l.currentLineNR)
-		//end = true
 		l.workingPosition++
 	}
 
 	for {
-		//Look for space.  The name ends where the space is, this type of line only has one tag,
-		// and closes at the end by />, and not using and end-tag
+		//Look for space.  The name ends where the space is.
 		if l.workingLine[l.workingPosition] == ' ' {
 			//fmt.Println("---------FOUND SPACE", l.currentLineNR)
 			//fmt.Printf("start = %v, end = %v \n", start, end)
 			break
 		}
-		//Look for closing angle bracket. The name ends where the '>' is. This type of line is
-		// called an element, and has both a start and an end tag
 		if l.workingLine[l.workingPosition] == '>' {
-			//fmt.Println("---------FOUND '>', WHICH INDICATED AN END BRACKET", l.currentLineNR)
-			//fmt.Printf("start = %v, end = %v \n", start, end)
-			l.elementLine = true
 			break
 		}
+
 		//if none of the above, we can safely add the chr to the slice
 		tn = append(tn, l.workingLine[l.workingPosition])
 		l.workingPosition++
 	}
 
-	//fmt.Printf("--- Found tag name '%v'\n", string(tn))
-	fmt.Printf("* tokenTagName, text = %v \n", string(tn))
 	l.tagName = string(tn)
+
+	switch l.tagTypeIs {
+	case startTag:
+		fmt.Printf("* tokenStartTag, TEXT = %v\n", l.tagName)
+	case stopTag:
+		fmt.Printf("* tokenEndTag, TEXT = %v\n", l.tagName)
+	}
 
 	//we return lexLineContent since we know we want to check if there is more to do with the line
 	return l.lexLineContent

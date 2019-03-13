@@ -6,7 +6,7 @@ import (
 
 //lexStartStopTag will check various versions of tags. Like if is a start tag, stop tag
 // tag with elements inside.
-func (l *lexer) lexStartStopTag() (elementText string) {
+func (l *lexer) lexTextBetweenTags() (elementText string) {
 	//If no equal was detected in the line, it is most likely a line with a start,
 	// and an end tag, but just text inbetween, and we want to pick out that text.
 	// Example : <someTag>WE WANT THIS TEXT</someTag>
