@@ -170,38 +170,15 @@ func (l *lexer) lexLineContent() stateFunc {
 func (l *lexer) lexTagArguments() stateFunc {
 	p1 := findChrPositionBefore(l.workingLine, ' ', l.workingPosition)
 	arg := findLettersBetween(l.workingLine, p1, l.workingPosition)
-	//fmt.Printf("---------------Found argument : %v \n", arg)
 	fmt.Printf("* tokenArgumentName, %v, text = %v\n", tokenArgumentName, arg)
 
 	//we add +1 to the working position below so we don't search and exit on the start quote.
 	p2 := findChrPositionAfter(l.workingLine, '"', l.workingPosition+1)
 	value := findLettersBetween(l.workingLine, l.workingPosition+1, p2)
-	//fmt.Printf("---------------Found argument value : %v \n", value)
 	fmt.Printf("* tokenArgumentValue, %v, text = %v\n", tokenArgumentValue, value)
 
 	l.workingPosition++
 	return l.lexLineContent
-}
-
-//checkForChrAfter takes a string, a position in a string, and a string pattern to look for as input.
-// Returns true if the character combination was found after the given position.
-// The function will first look for the first character in the given string,
-// and if that character is found we get into the inner for loop and loop over the
-// character pattern to check if the rest of the characters match.
-// If match we return, the value true, and exit the function.
-func checkForChrAfter(s string, curPos int, characters string) (found bool) {
-	for i := curPos; i < len(s)-1; i++ {
-		if s[i] == characters[0] {
-			for ii := 1; ii <= len(characters); ii++ {
-				if s[i+ii] == characters[ii] {
-					return true
-				}
-			}
-		}
-	}
-
-	//No match of the complete character string found, return false.
-	return false
 }
 
 //findChrPositionBefore .
@@ -285,8 +262,6 @@ func (l *lexer) lexTagName() stateFunc {
 	for {
 		//Look for space.  The name ends where the space is.
 		if l.workingLine[l.workingPosition] == ' ' {
-			//fmt.Println("---------FOUND SPACE", l.currentLineNR)
-			//fmt.Printf("start = %v, end = %v \n", start, end)
 			break
 		}
 		if l.workingLine[l.workingPosition] == '>' {
@@ -328,7 +303,6 @@ func (l *lexer) lexCheckLineType() stateFunc {
 
 	//TAG: set the workingLine = currentLine and go directly to lexing.
 	if start && end {
-		//fmt.Println(" ***TAG ", l.currentLineNR, ": HAS START AND END BRACKET, Normal tag line ***")
 		l.firstLineFound = false
 		l.workingLine = l.currentLine
 		return l.lexLineContent
@@ -337,8 +311,9 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	// TAG: This indicates this is the first line with a start tag, and the rest are on the following lines.
 	// Set initial workingLine=currentLine, and read another line. We set l.firstLineFound to true, to signal
 	// that we want to add more lines later to the current working line.
+	//
+	// Have start, no end, continues on the next line
 	if start && !end {
-		//fmt.Println(" ***TAG ", l.currentLineNR, " : start && !end, CONTINUES ON NEXT LINE ***")
 		l.firstLineFound = true
 		l.workingLine = l.workingLine + " " + l.currentLine
 		return l.lexReadFileLine
@@ -347,14 +322,12 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	// TAG: This indicates we have found a start earlier, and that we need to add this currentLine to the
 	// existing content of the workingLine, and read another line
 	if !start && !end && l.firstLineFound {
-		//fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.firstLineFound, CONTINUES ON NEXT LINE ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
 		return l.lexReadFileLine
 	}
 
 	//TAG: This should indicate that we found the last line of several that have to be combined
 	if !start && end && l.firstLineFound {
-		//fmt.Println(" ***TAG ", l.currentLineNR, " : !start && !end && l.firstLineFound, DONE COMBINING LINES ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
 		l.firstLineFound = false //end found, set firstLineFound back to false to be ready for finding new tag.
 		return l.lexLineContent
@@ -363,7 +336,6 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	//Description line. These are lines that have no start or end tag that belong to them.
 	// Starts, but continues on the next line.
 	if !start && !end && !l.firstLineFound && !nextLineStart {
-		//fmt.Println(" ***DESC", l.currentLineNR, ": !start && !end && !l.firstLineFound && !nextLineStart, CONTINUES ON NEXT LINE ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
 		return l.lexReadFileLine
 	}
@@ -373,7 +345,6 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	//TODO: This one should not need to lexLineContent since there is just descriptions here,
 	// no need to lex inside, and it should be given a token immediately.
 	if !start && !end && !l.firstLineFound && nextLineStart {
-		//fmt.Println(" ***DESC", l.currentLineNR, " : !start && !end && !l.firstLineFound && nextLineStart ***")
 		l.workingLine = l.workingLine + " " + l.currentLine
 		fmt.Printf("* tokenDescription, %v, text = %v \n", tokenDescription, l.workingLine)
 		return l.lexLineContent
