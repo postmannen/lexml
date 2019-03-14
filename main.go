@@ -9,6 +9,9 @@ All tag lines spanning several lines will be concatenated into a single line to 
 lexing easier. The concatenation will make sure that all the lines being lexed have a start
 and an end lile <a></a>, or <a/>.
 */
+
+// TODO: Make a package, and move main into /cmd
+// TODO: Make main accept command line arguments to choose output to channel or console
 package main
 
 import (
@@ -70,7 +73,7 @@ func (l *lexer) lexReadFileLine() stateFunc {
 	if err != nil {
 		if l.EOF {
 			close(tokenChan)
-			log.Println("closing channel, EOF of file")
+			fmt.Printf("* tokenEOF, %v\n", "EOF")
 			return nil
 		}
 		if err == io.EOF {
@@ -92,7 +95,6 @@ func (l *lexer) lexStart() {
 	for {
 		fn = fn()
 		if fn == nil {
-			log.Println("done with for loop")
 			break
 		}
 	}
@@ -378,6 +380,7 @@ const (
 	tokenArgumentName
 	tokenArgumentValue
 	tokenDescription
+	tokenEOF
 )
 
 type token struct {
