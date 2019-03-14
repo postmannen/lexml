@@ -46,13 +46,15 @@ type lexer struct {
 	foundEqual      bool          //used to detect if a line contains any argument/attributes, or just text
 	tagName         string        //to store the name of the tag while lexing a line.
 	tagTypeIs       tagType       //used to indicate if we are currently working on a start or a stop tag.
+	sendToken       tokenSender   //used to attach the tokenSender function. Must be initialized in main.
 }
 
 //newLexer will return a *lexer type, it takes a pointer to a file as input.
-func newLexer(fh *os.File) *lexer {
+func newLexer(fh *os.File, to tokenOutputType) *lexer {
 	return &lexer{
 		fileReader:    bufio.NewReader(fh),
 		currentLineNR: -1,
+		sendToken:     newTokenSender(to),
 	}
 }
 
@@ -73,7 +75,7 @@ func (l *lexer) lexReadFileLine() stateFunc {
 	if err != nil {
 		if l.EOF {
 			close(tokenChan)
-			fmt.Printf("* tokenEOF, %v\n", "EOF")
+			l.sendToken(tokenEOF, "EOF")
 			return nil
 		}
 		if err == io.EOF {
@@ -134,7 +136,7 @@ func (l *lexer) lexLineContent() stateFunc {
 					t := l.lexTextBetweenTags()
 					//If some text was returned
 					if t != "" {
-						fmt.Printf("* tokenJustText = %v\n", t)
+						l.sendToken(tokenJustText, t)
 					}
 				}
 
@@ -148,15 +150,15 @@ func (l *lexer) lexLineContent() stateFunc {
 			return l.lexTagName //find tag name
 		case '>':
 			if strings.Contains(l.workingLine, "/>") {
-				fmt.Printf("* tokenEndTag, %v\n", l.tagName)
+				l.sendToken(tokenEndTag, l.tagName)
 			}
 			if strings.Contains(l.workingLine, "?>") {
-				fmt.Printf("* tokenEndTag, %v\n", l.tagName)
+				l.sendToken(tokenEndTag, l.tagName)
 			}
 		case '=':
 			l.foundEqual = true
 			// fmt.Println("------FOUND EQUAL SIGN CHR----------")
-			fmt.Printf("* tokenArgumentFound, %v\n", tokenArgumentFound)
+			l.sendToken(tokenArgumentFound, "found argument")
 			return l.lexTagArguments
 		}
 
@@ -172,12 +174,12 @@ func (l *lexer) lexLineContent() stateFunc {
 func (l *lexer) lexTagArguments() stateFunc {
 	p1 := findChrPositionBefore(l.workingLine, ' ', l.workingPosition)
 	arg := findLettersBetween(l.workingLine, p1, l.workingPosition)
-	fmt.Printf("* tokenArgumentName, %v, text = %v\n", tokenArgumentName, arg)
+	l.sendToken(tokenArgumentName, arg)
 
 	//we add +1 to the working position below so we don't search and exit on the start quote.
 	p2 := findChrPositionAfter(l.workingLine, '"', l.workingPosition+1)
 	value := findLettersBetween(l.workingLine, l.workingPosition+1, p2)
-	fmt.Printf("* tokenArgumentValue, %v, text = %v\n", tokenArgumentValue, value)
+	l.sendToken(tokenArgumentValue, value)
 
 	l.workingPosition++
 	return l.lexLineContent
@@ -279,9 +281,9 @@ func (l *lexer) lexTagName() stateFunc {
 
 	switch l.tagTypeIs {
 	case startTag:
-		fmt.Printf("* tokenStartTag, TEXT = %v\n", l.tagName)
+		l.sendToken(tokenStartTag, l.tagName)
 	case stopTag:
-		fmt.Printf("* tokenEndTag, TEXT = %v\n", l.tagName)
+		l.sendToken(tokenEndTag, l.tagName)
 	}
 
 	//we return lexLineContent since we know we want to check if there is more to do with the line
@@ -348,7 +350,7 @@ func (l *lexer) lexCheckLineType() stateFunc {
 	// no need to lex inside, and it should be given a token immediately.
 	if !start && !end && !l.firstLineFound && nextLineStart {
 		l.workingLine = l.workingLine + " " + l.currentLine
-		fmt.Printf("* tokenDescription, %v, text = %v \n", tokenDescription, l.workingLine)
+		l.sendToken(tokenDescription, l.workingLine)
 		return l.lexLineContent
 	}
 
@@ -375,13 +377,24 @@ type tokenType int
 const (
 	tokenStartTag tokenType = iota
 	tokenEndTag
-	tokenTagName
 	tokenArgumentFound
 	tokenArgumentName
 	tokenArgumentValue
 	tokenDescription
 	tokenEOF
+	tokenJustText
 )
+
+var tokenMap = map[tokenType]string{
+	0: "tokenStartTag",
+	1: "tokenEndTag",
+	2: "tokenArgumentFound",
+	3: "tokenArgumentName",
+	4: "tokenArgumentValue",
+	5: "tokenDescription",
+	6: "tokenEOF",
+	7: "tokenJustText",
+}
 
 type token struct {
 	tokenType        //type of token, tokenStart, tokenStop, etc.
@@ -395,6 +408,39 @@ func readToken() {
 		fmt.Println("*readToken*", v.tokenText)
 	}
 	wg.Done()
+}
+
+type tokenSender func(tokenType, string)
+
+func tokenSendChannel(tType tokenType, tText string) {
+	tokenChan <- token{tokenType: tType, tokenText: tText}
+}
+
+//tokenSendConsole sends the token to STDOUT for printing
+func tokenSendConsole(tType tokenType, tText string) {
+	var mapValue string
+	if _, ok := tokenMap[tType]; ok {
+		mapValue = tokenMap[tType]
+	}
+	fmt.Printf("* %v, tokenText = %v\n", mapValue, tText)
+}
+
+type tokenOutputType int
+
+const (
+	console tokenOutputType = iota
+	channel
+)
+
+func newTokenSender(t tokenOutputType) tokenSender {
+	switch t {
+	case console:
+		return tokenSendConsole
+	case channel:
+		return tokenSendChannel
+	}
+
+	return nil
 }
 
 //------------------------------------------------------------------------------------------
@@ -423,7 +469,7 @@ func main() {
 	wg.Add(1)
 	go readToken()
 
-	lex := newLexer(fh)
+	lex := newLexer(fh, console)
 	lex.lexStart()
 
 	wg.Wait()
