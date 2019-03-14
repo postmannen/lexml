@@ -432,6 +432,8 @@ const (
 	channel
 )
 
+//newTokenSender will return a function that will send the output to either "console" or "channel"
+// based on what is chosen as input.
 func newTokenSender(t tokenOutputType) tokenSender {
 	switch t {
 	case console:
@@ -459,6 +461,7 @@ func main() {
 	}
 
 	fileName := flag.String("fileName", "", "specify the filename to check")
+	tokenOutput := flag.Int("tokenOutput", 0, "specify '0' for console or '1' for channel")
 	flag.Parse()
 
 	fh, err := os.Open(*fileName)
@@ -469,7 +472,7 @@ func main() {
 	wg.Add(1)
 	go readToken()
 
-	lex := newLexer(fh, console)
+	lex := newLexer(fh, tokenOutputType(*tokenOutput))
 	lex.lexStart()
 
 	wg.Wait()
