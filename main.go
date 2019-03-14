@@ -74,8 +74,8 @@ func (l *lexer) lexReadFileLine() stateFunc {
 	line, _, err := l.fileReader.ReadLine()
 	if err != nil {
 		if l.EOF {
-			close(tokenChan)
 			l.sendToken(tokenEOF, "EOF")
+			close(tokenChan)
 			return nil
 		}
 		if err == io.EOF {
@@ -371,30 +371,19 @@ Then the token is put on the channel to be received by the parser, and the go st
 //tokenType is the type describing a token.
 // A <start> start tag will have token start.
 // An </start> end tag will have token end.
-type tokenType int
+type tokenType string
 
 //XML tag - element - node, 3 names for the same thing.
 const (
-	tokenStartTag tokenType = iota
-	tokenEndTag
-	tokenArgumentFound
-	tokenArgumentName
-	tokenArgumentValue
-	tokenDescription
-	tokenEOF
-	tokenJustText
+	tokenStartTag      tokenType = "tokenStartTag"
+	tokenEndTag        tokenType = "tokenEndTag"
+	tokenArgumentFound tokenType = "tokenArgumentFound"
+	tokenArgumentName  tokenType = "tokenArgumentName"
+	tokenArgumentValue tokenType = "tokenArgumentValue"
+	tokenDescription   tokenType = "tokenDescription"
+	tokenEOF           tokenType = "tokenEOF"
+	tokenJustText      tokenType = "tokenJustText"
 )
-
-var tokenMap = map[tokenType]string{
-	0: "tokenStartTag",
-	1: "tokenEndTag",
-	2: "tokenArgumentFound",
-	3: "tokenArgumentName",
-	4: "tokenArgumentValue",
-	5: "tokenDescription",
-	6: "tokenEOF",
-	7: "tokenJustText",
-}
 
 type token struct {
 	tokenType        //type of token, tokenStart, tokenStop, etc.
@@ -404,8 +393,7 @@ type token struct {
 //readToken will pickup and read all the tokens that is received from the lexer
 func readToken() {
 	for v := range tokenChan {
-		fmt.Println("*readToken*", v.tokenType)
-		fmt.Println("*readToken*", v.tokenText)
+		fmt.Println("*readToken from channel * ", v.tokenType, ", tokenText = ", v.tokenText)
 	}
 	wg.Done()
 }
@@ -418,11 +406,7 @@ func tokenSendChannel(tType tokenType, tText string) {
 
 //tokenSendConsole sends the token to STDOUT for printing
 func tokenSendConsole(tType tokenType, tText string) {
-	var mapValue string
-	if _, ok := tokenMap[tType]; ok {
-		mapValue = tokenMap[tType]
-	}
-	fmt.Printf("* %v, tokenText = %v\n", mapValue, tText)
+	fmt.Printf("* %v, tokenText = %v\n", tType, tText)
 }
 
 type tokenOutputType int
@@ -461,7 +445,9 @@ func main() {
 	}
 
 	fileName := flag.String("fileName", "", "specify the filename to check")
-	tokenOutput := flag.Int("tokenOutput", 0, "specify '0' for console or '1' for channel")
+	tokenOutput := flag.Int("tokenOutput", 0, "specify '0' for console or '1' for channel. If you want to simulate a read locally without a parser who picks up the data from the channel, remember to enable -readChannel=yes.")
+	readChannel := flag.String("readChannel", "no", "yes/no , to enable a read channel to consume/read the data that is put on the channel. This is only used for if testing locally without a parser who read from the channel.")
+
 	flag.Parse()
 
 	fh, err := os.Open(*fileName)
@@ -469,11 +455,13 @@ func main() {
 		log.Fatal("Error: opening file: ", err)
 	}
 
-	wg.Add(1)
-	go readToken()
+	if *readChannel == "yes" {
+		go readToken()
+		wg.Add(1)
+		defer wg.Wait()
+	}
 
 	lex := newLexer(fh, tokenOutputType(*tokenOutput))
 	lex.lexStart()
 
-	wg.Wait()
 }
