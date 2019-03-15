@@ -17,11 +17,11 @@ func TestRealRun(t *testing.T) {
 	<shiporder orderid="889923"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:noNamespaceSchemaLocation="shiporder.xsd">
-  		<orderperson>John Smith</orderperson>
-  		<shipto>
-    		<name>Ola Nordmann</name>
-  		</shipto>
-  		<cmd name="TakeOff" id="1"></cmd>
+		<orderperson>John Smith</orderperson>
+		<shipto>
+			<name>Ola Nordmann</name>
+		</shipto>
+		<cmd name="TakeOff" id="1"></cmd>
 	</shiporder>
 	<comment
 		title="Take off"
@@ -33,12 +33,14 @@ func TestRealRun(t *testing.T) {
 		Then, event [FlyingState](#1-4-1) is triggered."/>
 	`)
 
-	go readToken()
+	tokenChan = make(chan token)
+
 	wg.Add(1)
+	go readToken()
 	defer wg.Wait()
 
-	lxr := newLexer(rdr, 1)
-	lxr.lexStart()
+	lex := newLexer(rdr, tokenOutputType(1))
+	lex.lexStart()
 
 }
 
