@@ -1,12 +1,41 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 const succeed = "*** \u2713 *** "
 const failed = "*** \u2717 **** "
 
 func TestTokenSendConsole(t *testing.T) {
 	//TODO
+}
+
+func TestRealRun(t *testing.T) {
+	rdr := strings.NewReader(`
+	<shiporder orderid="889923"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="shiporder.xsd">
+  		<orderperson>John Smith</orderperson>
+  		<shipto>
+    		<name>Ola Nordmann</name>
+  		</shipto>
+  		<cmd name="TakeOff" id="1"></cmd>
+	</shiporder>
+	<comment
+		title="Take off"
+		desc="Ask the drone to take off.\n
+		On the fixed wings (such as Disco): not used except to cancel a land."
+		support="0901;090c;090e"
+		result="On the quadcopters: the drone takes off if its [FlyingState](#1-4-1) was landed.\n
+		On the fixed wings, the landing process is aborted if the [FlyingState](#1-4-1) walanding.\n
+		Then, event [FlyingState](#1-4-1) is triggered."/>
+	`)
+
+	lxr := newLexer(rdr, 0)
+	lxr.lexStart()
+
 }
 
 func TestFindLettersBetween(t *testing.T) {

@@ -75,7 +75,8 @@ func (l *lexer) lexReadFileLine() stateFunc {
 	if err != nil {
 		if l.EOF {
 			l.sendToken(tokenEOF, "EOF")
-			close(tokenChan)
+			//TODO: This close does not work with testing, works ok in normal run!
+			//close(tokenChan)
 			return nil
 		}
 		if err == io.EOF {
