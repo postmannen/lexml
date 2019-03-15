@@ -33,7 +33,11 @@ func TestRealRun(t *testing.T) {
 		Then, event [FlyingState](#1-4-1) is triggered."/>
 	`)
 
-	lxr := newLexer(rdr, 0)
+	go readToken()
+	wg.Add(1)
+	defer wg.Wait()
+
+	lxr := newLexer(rdr, 1)
 	lxr.lexStart()
 
 }

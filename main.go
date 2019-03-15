@@ -76,7 +76,7 @@ func (l *lexer) lexReadFileLine() stateFunc {
 		if l.EOF {
 			l.sendToken(tokenEOF, "EOF")
 			//TODO: This close does not work with testing, works ok in normal run!
-			//close(tokenChan)
+			close(tokenChan)
 			return nil
 		}
 		if err == io.EOF {
@@ -496,7 +496,7 @@ func main() {
 
 	fileName := flag.String("fileName", "", "specify the filename to check")
 	tokenOutput := flag.Int("tokenOutput", 0, "specify '0' for console or '1' for channel. If you want to simulate a read locally without a parser who picks up the data from the channel, remember to enable -readChannel=yes.")
-	readChannel := flag.String("readChannel", "no", "yes/no , to enable a read channel to consume/read the data that is put on the channel. This is only used for if testing locally without a parser who read from the channel.")
+	//readChannel := flag.String("readChannel", "no", "yes/no , to enable a read channel to consume/read the data that is put on the channel. This is only used for if testing locally without a parser who read from the channel.")
 
 	flag.Parse()
 
@@ -505,7 +505,9 @@ func main() {
 		log.Fatal("Error: opening file: ", err)
 	}
 
-	if *readChannel == "yes" {
+	//we need to start a consumer for reading the tokens put on the channel,
+	// if channel is chosen as output.
+	if *tokenOutput == 1 {
 		go readToken()
 		wg.Add(1)
 		defer wg.Wait()
