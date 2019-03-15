@@ -49,8 +49,8 @@ type lexer struct {
 	sendToken       tokenSender   //used to attach the tokenSender function. Must be initialized in main.
 }
 
-//newLexer will return a *lexer type, it takes a pointer to a file as input.
-func newLexer(fh *os.File, to tokenOutputType) *lexer {
+//newLexer will return a *lexer type, it takes an io.Reder as input, which can be f.ex. a file handler.
+func newLexer(fh io.Reader, to tokenOutputType) *lexer {
 	return &lexer{
 		fileReader:    bufio.NewReader(fh),
 		currentLineNR: -1,

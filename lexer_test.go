@@ -6,8 +6,7 @@ const succeed = "*** \u2713 *** "
 const failed = "*** \u2717 **** "
 
 func TestTokenSendConsole(t *testing.T) {
-	t.Log(succeed, tokenSendConsole(tokenEOF, "EOF"))
-	t.Log(succeed, tokenSendConsole(tokenArgumentFound, "some-argument"))
+	//TODO
 }
 
 func TestFindLettersBetween(t *testing.T) {
