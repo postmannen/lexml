@@ -111,8 +111,8 @@ func LexStart(fh io.Reader) chan Token {
 
 //lexPrint will print the current working line.
 func (l *lexer) lexPrint() stateFunc {
-	fmt.Printf("\n Line nr=%v, %v\n", l.currentLineNR, l.workingLine)
-	fmt.Println("-------------------------------------------------------------------------")
+	//fmt.Printf("\n Line nr=%v, %v\n", l.currentLineNR, l.workingLine)
+	//fmt.Println("-------------------------------------------------------------------------")
 	//We reset variables here, since this is the last link in the chain of functions.
 	l.workingLine = ""
 	return l.lexReadFileLine()
