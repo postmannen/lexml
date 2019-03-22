@@ -1,5 +1,6 @@
-/*The idea here is to create a lexer for the parrot.xml file which
-holds the definition of the protocol used to control the Parrot Bebop 2 drone.
+/*
+lexml will lex an xml file and create tokens for the tag, arguments, etc that is lexed,
+and put the tokens on a channel where the tokens can be picked up by a parser.
 The lexer will be build't by having one main run function who executes a function,
 and get a new function in return, that again will be executed next.
 The program will be build't up by many smaller functions who serve one single purpose
@@ -10,9 +11,6 @@ lexing easier. The concatenation will make sure that all the lines being lexed h
 and an end lile <a></a>, or <a/>.
 */
 
-// TODO: Make a package, and move main into /cmd
-// TODO: Make main accept command line arguments to choose output to channel or console
-
 package lexml
 
 import (
@@ -21,7 +19,6 @@ import (
 	"io"
 	"log"
 	"strings"
-	"sync"
 )
 
 //tagType is used for storing if we are at the start or stop tag position while lexing a line.
@@ -33,6 +30,7 @@ const (
 	stopTag
 )
 
+//lexer is the data type that keeps all the information about the state.
 type lexer struct {
 	fileReader      *bufio.Reader //buffer used for reading file lines.
 	currentLineNR   int           //the line nr. being read
@@ -49,11 +47,11 @@ type lexer struct {
 }
 
 //newLexer will return a *lexer type, it takes an io.Reder as input, which can be f.ex. a file handler.
-func newLexer(fh io.Reader, to tokenOutputType) *lexer {
+func newLexer(fh io.Reader) *lexer {
 	return &lexer{
 		fileReader:    bufio.NewReader(fh),
 		currentLineNR: -1,
-		sendToken:     newTokenSender(to),
+		sendToken:     tokenSendChannel,
 	}
 }
 
@@ -87,32 +85,28 @@ func (l *lexer) lexReadFileLine() stateFunc {
 	return l.lexCheckLineType
 }
 
-var tokenChan chan token
-var wg sync.WaitGroup
+var tokenChan chan Token
 
 //lexStart will start the reading of lines from file, and then kickstart it all
 // by running the returned function inside the for loop.
 // Since all methods return a new method to be executed on the next run, we
 // will check if the current ran method returned nil instead of a new method
 // to exit.
-func LexStart(fh io.Reader, tO string) {
-	l := newLexer(fh, tokenOutputType(tO))
-	tokenChan = make(chan token)
-	//we need to start a consumer for reading the tokens put on the channel,
-	// if channel is chosen as output.
-	if tO == "channel" {
-		go ReadToken(tokenChan)
-		wg.Add(1)
-		defer wg.Wait()
-	}
+func LexStart(fh io.Reader) chan Token {
+	l := newLexer(fh)
+	tokenChan = make(chan Token)
 
-	fn := l.lexReadFileLine()
-	for {
-		fn = fn()
-		if fn == nil {
-			break
+	go func() {
+		fn := l.lexReadFileLine()
+		for {
+			fn = fn()
+			if fn == nil {
+				break
+			}
 		}
-	}
+	}()
+
+	return tokenChan
 }
 
 //lexPrint will print the current working line.
@@ -425,7 +419,6 @@ func (l *lexer) lexCheckLineType() stateFunc {
 
 //------------------------------------Tokens--------------------------------------------
 /*
-Example for how to send and receive tokens from the lexer.
 When the lexer find something, it creates a token of type token. It will choose the type of token found and put that into tokenType, and the text found will be put into the argument.
 Then the token is put on the channel to be received by the parser, and the go struct code will be generated within the switch/case selection.
 */
@@ -433,60 +426,34 @@ Then the token is put on the channel to be received by the parser, and the go st
 //tokenType is the type describing a token.
 // A <start> start tag will have token start.
 // An </start> end tag will have token end.
-type tokenType string
-
-//XML tag - element - node, 3 names for the same thing.
-const (
-	tokenStartTag      tokenType = "tokenStartTag"
-	tokenEndTag        tokenType = "tokenEndTag"
-	tokenArgumentFound tokenType = "tokenArgumentFound"
-	tokenArgumentName  tokenType = "tokenArgumentName"
-	tokenArgumentValue tokenType = "tokenArgumentValue"
-	tokenDescription   tokenType = "tokenDescription"
-	tokenEOF           tokenType = "tokenEOF"
-	tokenJustText      tokenType = "tokenJustText"
-)
-
-type token struct {
-	tokenType        //type of token, tokenStart, tokenStop, etc.
-	tokenText string //the actual text found in the xml while lexing
-}
-
-//readToken will pickup and read all the tokens that is received from the lexer
-func ReadToken(tCh chan token) {
-	for v := range tCh {
-		fmt.Println("*readToken from channel * ", v.tokenType, ", tokenText = ", v.tokenText)
-	}
-	wg.Done()
-}
-
-type tokenSender func(tokenType, string)
-
-func tokenSendChannel(tType tokenType, tText string) {
-	tokenChan <- token{tokenType: tType, tokenText: tText}
-}
-
-//tokenSendConsole sends the token to STDOUT for printing
-func tokenSendConsole(tType tokenType, tText string) {
-	fmt.Printf("* %v, tokenText = %v\n", tType, tText)
-}
-
-type tokenOutputType string
+type TokenType string
 
 const (
-	console tokenOutputType = "console"
-	channel tokenOutputType = "channel"
+	tokenStartTag      TokenType = "tokenStartTag"      // <tag> || <
+	tokenEndTag        TokenType = "tokenEndTag"        // </tag> || />
+	tokenArgumentFound TokenType = "tokenArgumentFound" // =
+	tokenArgumentName  TokenType = "tokenArgumentName"  // name is infront of a = sign
+	tokenArgumentValue TokenType = "tokenArgumentValue" // value is after a = sign
+	tokenDescription   TokenType = "tokenDescription"   // Description, just text between tags
+	tokenEOF           TokenType = "tokenEOF"           //End Of File
+	tokenJustText      TokenType = "tokenJustText"      //just text, no start or end tag
 )
 
-//newTokenSender will return a function that will send the output to either "console" or "channel"
-// based on what is chosen as input.
-func newTokenSender(t tokenOutputType) tokenSender {
-	switch t {
-	case console:
-		return tokenSendConsole
-	case channel:
-		return tokenSendChannel
-	}
+//Token is the actual token that will be sent over the channel.
+type Token struct {
+	TokenType        //type of token, tokenStart, tokenStop, etc.
+	TokenText string //the actual text found in the xml while lexing
+}
 
-	return nil
+//tokenSender is a type describing a token sender function.
+// The reson for this type is that the code used to have
+// several posibilities for sending tokens, but there is only 1,
+// which is a channel.
+// Keeping the type incase other ways will be added in the future.
+type tokenSender func(TokenType, string)
+
+//tokenSendChannel is just a functions who takes a token,
+// and puts it on the channel.
+func tokenSendChannel(tType TokenType, tText string) {
+	tokenChan <- Token{TokenType: tType, TokenText: tText}
 }

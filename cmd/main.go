@@ -1,7 +1,11 @@
+/*
+ This main.go file will typically be the parser, but here we just print out the tokens that is received.
+*/
 package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
@@ -17,7 +21,6 @@ func main() {
 	}
 
 	fileName := flag.String("fileName", "", "specify the filename to check")
-	tokenOutput := flag.String("tokenOutput", "console", "specify '0' for console or '1' for channel. If you want to simulate a read locally without a parser who picks up the data from the channel, remember to enable -readChannel=yes.")
 
 	flag.Parse()
 
@@ -26,6 +29,10 @@ func main() {
 		log.Fatal("Error: opening file: ", err)
 	}
 
-	lexml.LexStart(fh, *tokenOutput)
+	tCh := lexml.LexStart(fh)
+
+	for v := range tCh {
+		fmt.Println("*readToken from channel * ", v.TokenType, ", tokenText = ", v.TokenText)
+	}
 
 }
