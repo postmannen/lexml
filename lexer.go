@@ -87,6 +87,9 @@ func (l *lexer) lexReadFileLine() stateFunc {
 	return l.lexCheckLineType
 }
 
+var tokenChan chan token
+var wg sync.WaitGroup
+
 //lexStart will start the reading of lines from file, and then kickstart it all
 // by running the returned function inside the for loop.
 // Since all methods return a new method to be executed on the next run, we
@@ -487,8 +490,3 @@ func newTokenSender(t tokenOutputType) tokenSender {
 
 	return nil
 }
-
-//------------------------------------------------------------------------------------------
-
-var tokenChan chan token
-var wg sync.WaitGroup
