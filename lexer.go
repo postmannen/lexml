@@ -12,15 +12,14 @@ and an end lile <a></a>, or <a/>.
 
 // TODO: Make a package, and move main into /cmd
 // TODO: Make main accept command line arguments to choose output to channel or console
-package main
+
+package xmltogo
 
 import (
 	"bufio"
-	"flag"
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"strings"
 	"sync"
 )
@@ -93,7 +92,16 @@ func (l *lexer) lexReadFileLine() stateFunc {
 // Since all methods return a new method to be executed on the next run, we
 // will check if the current ran method returned nil instead of a new method
 // to exit.
-func (l *lexer) lexStart() {
+func LexStart(fh io.Reader, tO string) {
+	l := newLexer(fh, tokenOutputType(tO))
+	tokenChan = make(chan token)
+	//we need to start a consumer for reading the tokens put on the channel,
+	// if channel is chosen as output.
+	if tO == "channel" {
+		go ReadToken(tokenChan)
+		wg.Add(1)
+		defer wg.Wait()
+	}
 
 	fn := l.lexReadFileLine()
 	for {
@@ -442,8 +450,8 @@ type token struct {
 }
 
 //readToken will pickup and read all the tokens that is received from the lexer
-func readToken() {
-	for v := range tokenChan {
+func ReadToken(tCh chan token) {
+	for v := range tCh {
 		fmt.Println("*readToken from channel * ", v.tokenType, ", tokenText = ", v.tokenText)
 	}
 	wg.Done()
@@ -460,11 +468,11 @@ func tokenSendConsole(tType tokenType, tText string) {
 	fmt.Printf("* %v, tokenText = %v\n", tType, tText)
 }
 
-type tokenOutputType int
+type tokenOutputType string
 
 const (
-	console tokenOutputType = iota
-	channel
+	console tokenOutputType = "console"
+	channel tokenOutputType = "channel"
 )
 
 //newTokenSender will return a function that will send the output to either "console" or "channel"
@@ -484,37 +492,3 @@ func newTokenSender(t tokenOutputType) tokenSender {
 
 var tokenChan chan token
 var wg sync.WaitGroup
-
-func main() {
-
-	tokenChan = make(chan token)
-
-	a := os.Args
-	if len(a) < 2 {
-		log.Fatal("Specify an xml file\n")
-
-	}
-
-	fileName := flag.String("fileName", "", "specify the filename to check")
-	tokenOutput := flag.Int("tokenOutput", 0, "specify '0' for console or '1' for channel. If you want to simulate a read locally without a parser who picks up the data from the channel, remember to enable -readChannel=yes.")
-	//readChannel := flag.String("readChannel", "no", "yes/no , to enable a read channel to consume/read the data that is put on the channel. This is only used for if testing locally without a parser who read from the channel.")
-
-	flag.Parse()
-
-	fh, err := os.Open(*fileName)
-	if err != nil {
-		log.Fatal("Error: opening file: ", err)
-	}
-
-	//we need to start a consumer for reading the tokens put on the channel,
-	// if channel is chosen as output.
-	if *tokenOutput == 1 {
-		go readToken()
-		wg.Add(1)
-		defer wg.Wait()
-	}
-
-	lex := newLexer(fh, tokenOutputType(*tokenOutput))
-	lex.lexStart()
-
-}
