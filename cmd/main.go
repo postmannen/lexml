@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/postmannen/xmltogo"
+	"github.com/postmannen/lexml"
 )
 
 func main() {
@@ -26,6 +26,6 @@ func main() {
 		log.Fatal("Error: opening file: ", err)
 	}
 
-	xmltogo.LexStart(fh, *tokenOutput)
+	lexml.LexStart(fh, *tokenOutput)
 
 }

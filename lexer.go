@@ -13,7 +13,7 @@ and an end lile <a></a>, or <a/>.
 // TODO: Make a package, and move main into /cmd
 // TODO: Make main accept command line arguments to choose output to channel or console
 
-package xmltogo
+package lexml
 
 import (
 	"bufio"
