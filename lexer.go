@@ -152,6 +152,13 @@ func (l *lexer) lexLineContent() stateFunc {
 				//break //found end, no need to check further, break out.
 			}
 
+			//found rem'ed out line, read another line
+			if l.workingLine[l.workingPosition+1] == '!' &&
+				l.workingLine[l.workingPosition+2] == '-' &&
+				l.workingLine[l.workingPosition+3] == '-' {
+				return l.lexReadFileLine()
+			}
+
 			//It was a start tag
 			l.tagTypeIs = startTag
 			return l.lexTagName //find tag name
