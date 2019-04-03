@@ -462,5 +462,5 @@ type tokenSender func(TokenType, string)
 //tokenSendChannel is just a functions who takes a token,
 // and puts it on the channel.
 func tokenSendChannel(tType TokenType, tText string) {
-	tokenChan <- Token{TokenType: tType, TokenText: tText}
+	tokenChan <- Token{TokenType: tType, TokenText: strings.TrimSpace(tText)}
 }
