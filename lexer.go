@@ -281,7 +281,7 @@ func findChrPositionAfter(s string, preChr byte, origChrPosition int) (nextChrPo
 	for {
 		p++
 		if p > len(s)-1 {
-			log.Println("Found no space before the equal sign, reached the end of the line")
+			//log.Println("Found no space before the equal sign, reached the end of the line")
 			break
 		}
 
