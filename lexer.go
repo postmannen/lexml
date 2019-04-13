@@ -169,11 +169,11 @@ func (l *lexer) lexLineContent() stateFunc {
 			if strings.Contains(l.workingLine, "?>") {
 				l.sendToken(tokenEndTag, l.tagName)
 			}
-		case '=':
-			l.foundEqual = true
-			// fmt.Println("------FOUND EQUAL SIGN CHR----------")
-			l.sendToken(tokenArgumentFound, "found argument")
-			return l.lexTagArguments
+			//case '=':
+			//	l.foundEqual = true
+			//	// fmt.Println("------FOUND EQUAL SIGN CHR----------")
+			//	l.sendToken(tokenArgumentFound, "found argument")
+			//	return l.lexTagArguments
 		}
 
 		l.workingPosition++
@@ -258,7 +258,7 @@ func findChrPositionBefore(s string, preChr byte, origChrPosition int) (preChrPo
 	for {
 		p--
 		if p < 0 {
-			log.Println("Found no space before the equal sign, reached the beginning of the line")
+			//log.Println("Found no space before the equal sign, reached the beginning of the line")
 			break
 		}
 		if s[p] == preChr {
@@ -436,9 +436,9 @@ Then the token is put on the channel to be received by the parser, and the go st
 type TokenType string
 
 const (
-	tokenStartTag      TokenType = "tokenStartTag"      // <tag> || <
-	tokenEndTag        TokenType = "tokenEndTag"        // </tag> || />
-	tokenArgumentFound TokenType = "tokenArgumentFound" // =
+	tokenStartTag TokenType = "tokenStartTag" // <tag> || <
+	tokenEndTag   TokenType = "tokenEndTag"   // </tag> || />
+	//tokenArgumentFound TokenType = "tokenArgumentFound" // =
 	tokenArgumentName  TokenType = "tokenArgumentName"  // name is infront of a = sign
 	tokenArgumentValue TokenType = "tokenArgumentValue" // value is after a = sign
 	tokenDescription   TokenType = "tokenDescription"   // Description, just text between tags
